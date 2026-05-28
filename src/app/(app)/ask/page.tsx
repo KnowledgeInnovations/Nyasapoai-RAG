@@ -1,18 +1,17 @@
 import type { Metadata } from 'next'
+import { createClient } from '@/lib/supabase/server'
 import AskInterface from '@/components/app/AskInterface'
 
-export const metadata: Metadata = { title: 'Ask — Devtraco Plus' }
+export const metadata: Metadata = { title: 'Ask AI — Devtraco Plus' }
 
-export default function AskPage() {
+export default async function AskPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'there'
+
   return (
-    <div className="flex h-full flex-col">
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-gray-900">Ask your documents</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Ask any question about Devtraco Plus reports, contracts, and internal documents — answers are cited.
-        </p>
-      </div>
-      <AskInterface />
+    <div className="flex h-full flex-col overflow-hidden">
+      <AskInterface userName={userName} />
     </div>
   )
 }

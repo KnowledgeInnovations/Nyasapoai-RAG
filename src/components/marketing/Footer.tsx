@@ -1,58 +1,41 @@
 import Link from 'next/link'
 
-const cols = [
-  {
-    title: 'Product',
-    links: [
-      { href: '/pricing', label: 'Pricing' },
-      { href: '/security', label: 'Security' },
-      { href: '/demo', label: 'Book a demo' },
-    ],
-  },
-  {
-    title: 'Company',
-    links: [{ href: '/contact', label: 'Contact' }],
-  },
-  {
-    title: 'Legal',
-    links: [
-      { href: '/privacy', label: 'Privacy Policy' },
-      { href: '/terms', label: 'Terms of Service' },
-    ],
-  },
+const links = [
+  { href: '/security', label: 'Security' },
+  { href: '/pricing', label: 'Pricing' },
+  { href: '/contact', label: 'Contact' },
+  { href: '/auth/login', label: 'Sign in' },
 ]
 
 export default function MarketingFooter() {
   return (
-    <footer className="border-t border-gray-100 bg-gray-50">
-      <div className="mx-auto max-w-7xl px-6 py-12">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
-          <div>
-            <Link href="/" className="flex items-center gap-2">
-              <span className="text-lg font-bold text-brand">Nyansapo</span>
-              <span className="rounded bg-brand px-1.5 py-0.5 text-xs font-semibold text-white">AI</span>
-            </Link>
-            <p className="mt-3 text-sm text-gray-500">
-              Enterprise document intelligence for decision-makers.
-            </p>
+    <footer className="bg-navy-mid border-t border-white/10">
+      <div className="mx-auto max-w-7xl px-6 py-10">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          {/* Brand */}
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gold shadow-lg shadow-gold/20">
+              <span className="text-xs font-black text-navy">DT</span>
+            </div>
+            <div>
+              <p className="text-sm font-extrabold text-white">Devtraco Plus</p>
+              <p className="text-[11px] text-white/35 leading-tight">Powered by NyansapoAI · Knowledge Innovations</p>
+            </div>
           </div>
 
-          {cols.map((col) => (
-            <div key={col.title}>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-900">{col.title}</h3>
-              <ul className="mt-4 space-y-2">
-                {col.links.map((l) => (
-                  <li key={l.href}>
-                    <Link href={l.href} className="text-sm text-gray-500 hover:text-gray-900">{l.label}</Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          {/* Links */}
+          <nav className="flex flex-wrap gap-x-6 gap-y-2 justify-center">
+            {links.map(l => (
+              <Link key={l.href} href={l.href}
+                className="text-sm text-white/45 transition hover:text-white">
+                {l.label}
+              </Link>
+            ))}
+          </nav>
         </div>
 
-        <div className="mt-10 border-t border-gray-200 pt-6 text-center text-xs text-gray-400">
-          &copy; {new Date().getFullYear()} NyansapoAI. All rights reserved.
+        <div className="mt-8 pt-6 border-t border-white/10 text-center text-xs text-white/20">
+          &copy; {new Date().getFullYear()} Devtraco Plus · Knowledge Innovations Ltd. All rights reserved.
         </div>
       </div>
     </footer>
