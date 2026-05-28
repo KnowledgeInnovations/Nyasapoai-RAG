@@ -1,23 +1,28 @@
 'use client'
 
 import { useState } from 'react'
-import { Bell, ChevronDown, LogOut, Settings } from 'lucide-react'
+import { Bell, ChevronDown, LogOut, Settings, Menu, PanelLeftClose, PanelLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, usePathname } from 'next/navigation'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 import { cn } from '@/lib/utils'
 
-interface Props { user: SupabaseUser }
-
-const pageTitles: Record<string, string> = {
-  '/ask': 'Ask AI',
-  '/documents': 'Documents',
-  '/insights': 'Insights',
-  '/settings': 'Settings',
+interface Props {
+  user: SupabaseUser
+  onMenuOpen: () => void
+  sidebarCollapsed: boolean
+  onToggleSidebar: () => void
 }
 
-export default function AppTopNav({ user }: Props) {
-  const router = useRouter()
+const pageTitles: Record<string, string> = {
+  '/ask':       'Ask AI',
+  '/documents': 'Documents',
+  '/insights':  'Insights',
+  '/settings':  'Settings',
+}
+
+export default function AppTopNav({ user, onMenuOpen, sidebarCollapsed, onToggleSidebar }: Props) {
+  const router   = useRouter()
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
   const supabase = createClient()
@@ -29,24 +34,45 @@ export default function AppTopNav({ user }: Props) {
   }
 
   const displayName = user.user_metadata?.name || user.email?.split('@')[0] || 'User'
-  const initials = displayName.slice(0, 2).toUpperCase()
-  const pageTitle = Object.entries(pageTitles).find(([key]) => pathname.startsWith(key))?.[1] ?? 'Workspace'
+  const initials    = displayName.slice(0, 2).toUpperCase()
+  const pageTitle   = Object.entries(pageTitles).find(([k]) => pathname.startsWith(k))?.[1] ?? 'Workspace'
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-100 bg-white px-6">
-      <h1 className="text-base font-bold text-gray-900">{pageTitle}</h1>
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4">
 
+      {/* Left: sidebar toggles + page title */}
       <div className="flex items-center gap-2">
-        {/* Notifications */}
-        <button className="relative flex h-9 w-9 items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition">
+        {/* Mobile hamburger */}
+        <button onClick={onMenuOpen} aria-label="Open menu"
+          className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition md:hidden">
+          <Menu className="h-5 w-5" />
+        </button>
+
+        {/* Desktop collapse/expand toggle */}
+        <button onClick={onToggleSidebar} aria-label="Toggle sidebar"
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="hidden md:flex h-9 w-9 items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition">
+          {sidebarCollapsed
+            ? <PanelLeft className="h-4.5 w-4.5" />
+            : <PanelLeftClose className="h-4.5 w-4.5" />
+          }
+        </button>
+
+        <div className="h-4 w-px bg-gray-200 hidden md:block" />
+        <h1 className="text-base font-bold text-gray-900">{pageTitle}</h1>
+      </div>
+
+      {/* Right: bell + user */}
+      <div className="flex items-center gap-1.5">
+        <button aria-label="Notifications"
+          className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition">
           <Bell className="h-4.5 w-4.5" />
         </button>
 
-        {/* User menu */}
         <div className="relative">
           <button onClick={() => setMenuOpen(!menuOpen)}
-            className="flex items-center gap-2.5 rounded-xl px-2.5 py-1.5 hover:bg-gray-50 transition">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand text-xs font-bold text-white shadow-sm">
+            className="flex items-center gap-2 rounded-xl px-2 py-1.5 hover:bg-gray-100 transition">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand text-[11px] font-bold text-white shadow-sm">
               {initials}
             </div>
             <div className="hidden sm:block text-left">

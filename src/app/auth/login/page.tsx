@@ -3,45 +3,43 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, Suspense } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Eye, EyeOff, ArrowRight, CheckCircle2, Loader2, Mail } from 'lucide-react'
 
-const DEMO_EMAIL = 'demo@devtraco.com'
-const DEMO_PASSWORD = 'Demo1234'
+const FEATURES = [
+  'Ask anything across all your project files and contracts',
+  'Every answer cites the exact source document',
+  'Role-based access — executives to site managers',
+]
 
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const tenant = searchParams.get('tenant')
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [magicSent, setMagicSent] = useState(false)
+  const [email, setEmail]           = useState('')
+  const [password, setPassword]     = useState('')
+  const [showPwd, setShowPwd]       = useState(false)
+  const [error, setError]           = useState('')
+  const [loading, setLoading]       = useState(false)
+  const [magicSent, setMagicSent]   = useState(false)
+  const [mode, setMode]             = useState<'password' | 'magic'>('password')
 
   const supabase = createClient()
 
-  async function handleLogin(e: React.SyntheticEvent) {
+  async function handlePassword(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
-
-    // Demo mode — no Supabase needed
-    if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
-      document.cookie = 'demo_session=active; path=/; max-age=86400'
-      router.push('/ask')
-      return
-    }
-
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) setError(error.message)
     else router.push('/ask')
     setLoading(false)
   }
 
-  async function handleMagicLink() {
-    if (!email) { setError('Enter your email first'); return }
+  async function handleMagic(e: React.FormEvent) {
+    e.preventDefault()
     setError('')
     setLoading(true)
     const { error } = await supabase.auth.signInWithOtp({
@@ -53,100 +51,213 @@ function LoginForm() {
     setLoading(false)
   }
 
-  const isDevtraco = tenant === 'devtraco' || !tenant
+  if (magicSent) {
+    return (
+      <div className="py-6 text-center">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100">
+          <Mail className="h-8 w-8 text-emerald-600" />
+        </div>
+        <h3 className="text-lg font-bold text-gray-900">Check your inbox</h3>
+        <p className="mt-2 text-sm text-gray-500">
+          We sent a secure sign-in link to
+          <br />
+          <span className="font-semibold text-gray-800">{email}</span>
+        </p>
+        <button onClick={() => { setMagicSent(false); setMode('password') }}
+          className="mt-6 text-sm font-medium text-brand transition hover:text-brand-dark">
+          ← Back to sign in
+        </button>
+      </div>
+    )
+  }
 
   return (
-    <div className="w-full max-w-md">
-      <div className="text-center">
-        <div className="inline-flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand">
-            <span className="text-sm font-bold text-white">DT</span>
-          </div>
-          <div className="text-left">
-            <p className="text-lg font-bold text-gray-900">Devtraco Plus</p>
-            <p className="text-xs text-gray-400">Intelligence workspace</p>
-          </div>
-        </div>
-        <h1 className="mt-6 text-2xl font-bold text-gray-900">
-          {isDevtraco ? 'Sign in to your workspace' : `Sign in to ${tenant}`}
-        </h1>
-        <p className="mt-2 text-sm text-gray-500">
-          Use your Devtraco Plus work email to continue.
-        </p>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-extrabold text-gray-900">Welcome back</h2>
+        <p className="mt-1 text-sm text-gray-500">Sign in to your Devtraco Plus workspace</p>
       </div>
 
-      {/* Demo hint */}
-      <div className="mt-6 rounded-xl border border-gold bg-gold-light px-4 py-3 text-sm">
-        <p className="font-semibold text-gold-dark">Demo account</p>
-        <p className="text-gray-600 mt-0.5">
-          Email: <span className="font-mono font-medium">{DEMO_EMAIL}</span><br />
-          Password: <span className="font-mono font-medium">{DEMO_PASSWORD}</span>
-        </p>
+      {/* Mode tabs */}
+      <div className="flex rounded-xl border border-gray-200 bg-gray-100 p-1">
+        {(['password', 'magic'] as const).map(m => (
+          <button key={m} onClick={() => { setMode(m); setError('') }}
+            className={`flex-1 rounded-lg py-2 text-xs font-semibold transition ${
+              mode === m ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}>
+            {m === 'password' ? 'Password' : 'Email link'}
+          </button>
+        ))}
       </div>
 
-      {magicSent ? (
-        <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-6 text-center">
-          <p className="font-medium text-green-800">Check your email</p>
-          <p className="mt-1 text-sm text-green-600">
-            We sent a sign-in link to <strong>{email}</strong>
-          </p>
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
         </div>
-      ) : (
-        <form onSubmit={handleLogin} className="mt-6 space-y-4">
-          {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-          )}
+      )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Work email</label>
+      {mode === 'password' ? (
+        <form onSubmit={handlePassword} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="block text-sm font-semibold text-gray-700">Work email</label>
             <input
               type="email"
               required
+              autoFocus
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value)}
               placeholder="you@devtraco.com"
-              className="mt-1 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-light"
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/10"
             />
           </div>
 
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-gray-700">Password</label>
-              <button type="button" onClick={handleMagicLink} className="text-xs text-brand hover:underline">
-                Email me a link instead
+          <div className="space-y-1.5">
+            <label className="block text-sm font-semibold text-gray-700">Password</label>
+            <div className="relative">
+              <input
+                type={showPwd ? 'text' : 'password'}
+                required
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••••"
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 pr-11 text-sm text-gray-900 placeholder-gray-400 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/10"
+              />
+              <button type="button" onClick={() => setShowPwd(!showPwd)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
+                {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-light"
-            />
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-xl bg-brand py-3 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-60"
-          >
-            {loading ? 'Signing in…' : 'Sign in'}
+          <button type="submit" disabled={loading}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-navy py-3.5 text-sm font-bold text-white shadow-lg shadow-navy/20 transition hover:bg-navy-mid disabled:opacity-60">
+            {loading
+              ? <><Loader2 className="h-4 w-4 animate-spin" /> Signing in…</>
+              : <>Sign in <ArrowRight className="h-4 w-4" /></>}
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={handleMagic} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="block text-sm font-semibold text-gray-700">Work email</label>
+            <input
+              type="email"
+              required
+              autoFocus
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="you@devtraco.com"
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder-gray-400 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/10"
+            />
+          </div>
+          <p className="text-xs text-gray-500">
+            We'll send a secure sign-in link to your inbox. No password needed.
+          </p>
+          <button type="submit" disabled={loading}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-navy py-3.5 text-sm font-bold text-white shadow-lg shadow-navy/20 transition hover:bg-navy-mid disabled:opacity-60">
+            {loading
+              ? <><Loader2 className="h-4 w-4 animate-spin" /> Sending link…</>
+              : <><Mail className="h-4 w-4" /> Send sign-in link</>}
           </button>
         </form>
       )}
-
-      <p className="mt-8 text-center text-[11px] text-gray-400">
-        Powered by <span className="font-medium text-gray-500">NyansapoAI</span>
-      </p>
     </div>
   )
 }
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-6 py-12">
-      <Suspense fallback={<div className="text-sm text-gray-400">Loading…</div>}>
-        <LoginForm />
-      </Suspense>
+    <div className="flex min-h-screen">
+
+      {/* ── Left panel — dark navy brand ───────────────────── */}
+      <div className="relative hidden overflow-hidden lg:flex lg:w-[44%] xl:w-[40%] flex-col bg-navy p-12">
+        {/* Ambient glows */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute right-0 top-1/3 h-96 w-96 rounded-full bg-gold/7 blur-3xl" />
+          <div className="absolute bottom-1/4 left-0 h-72 w-72 rounded-full bg-brand/12 blur-3xl" />
+        </div>
+
+        <div className="relative z-10 flex flex-1 flex-col">
+          {/* Logo */}
+          <Link href="/" className="inline-flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold shadow-xl shadow-gold/30">
+              <span className="text-[11px] font-black text-navy">DT</span>
+            </div>
+            <div>
+              <p className="text-sm font-extrabold text-white">Devtraco Plus</p>
+              <p className="text-[11px] text-white/40 leading-tight">Intelligence workspace</p>
+            </div>
+          </Link>
+
+          {/* Hero copy */}
+          <div className="mt-auto">
+            <p className="mb-4 text-[11px] font-bold uppercase tracking-widest text-gold">
+              Powered by NyansapoAI
+            </p>
+            <h1 className="text-4xl font-extrabold leading-[1.15] text-white">
+              Every answer.<br />
+              Every source.<br />
+              <span className="bg-gradient-to-r from-gold to-yellow-300 bg-clip-text text-transparent">
+                Instantly found.
+              </span>
+            </h1>
+            <p className="mt-5 text-[15px] leading-relaxed text-white/50">
+              Ask questions across thousands of project files, contracts, and site reports — get cited answers in seconds.
+            </p>
+
+            <ul className="mt-8 space-y-3.5">
+              {FEATURES.map(f => (
+                <li key={f} className="flex items-start gap-3 text-sm text-white/55">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-gold/60" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <p className="mt-12 text-[11px] text-white/20">
+            © {new Date().getFullYear()} Devtraco Plus · Knowledge Innovations Ltd
+          </p>
+        </div>
+      </div>
+
+      {/* ── Right panel — form ──────────────────────────────── */}
+      <div className="flex flex-1 flex-col items-center justify-center bg-[#f8f9fb] px-6 py-12">
+
+        {/* Mobile-only logo */}
+        <Link href="/" className="mb-8 inline-flex items-center gap-3 lg:hidden">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy shadow-lg">
+            <span className="text-[11px] font-black text-gold">DT</span>
+          </div>
+          <div>
+            <p className="text-sm font-extrabold text-gray-900">Devtraco Plus</p>
+            <p className="text-[11px] text-gray-400">Intelligence workspace</p>
+          </div>
+        </Link>
+
+        {/* Card */}
+        <div className="w-full max-w-md">
+          <div className="rounded-3xl border border-gray-200/80 bg-white p-8 shadow-2xl shadow-black/5">
+            <Suspense fallback={
+              <div className="flex h-64 items-center justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+              </div>
+            }>
+              <LoginForm />
+            </Suspense>
+          </div>
+
+          <p className="mt-5 text-center text-xs text-gray-400">
+            Powered by{' '}
+            <span className="font-semibold text-gray-500">NyansapoAI</span>
+            {' · '}
+            <Link href="/" className="text-brand hover:underline transition">
+              Back to home
+            </Link>
+          </p>
+        </div>
+      </div>
+
     </div>
   )
 }
