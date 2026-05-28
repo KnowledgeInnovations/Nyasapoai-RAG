@@ -1,33 +1,29 @@
 import type { Metadata } from 'next'
-import { createClient } from '@/lib/supabase/server'
+import { getMembership, createClient } from '@/lib/supabase/server'
 import DocumentsClient from '@/components/app/DocumentsClient'
 import type { Document } from '@/types'
 
-export const metadata: Metadata = { title: 'Documents — NyansapoAI' }
+export const metadata: Metadata = { title: 'Documents — Devtraco Plus' }
 
 export default async function DocumentsPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  // Both come from cache warmed by the layout — no extra network calls.
+  const membership = await getMembership()
 
   let documents: Document[] = []
+  let canUpload = false
 
-  if (user) {
-    const { data: membership } = await supabase
-      .from('memberships')
-      .select('tenant_id, role')
-      .eq('user_id', user.id)
-      .single()
+  if (membership) {
+    canUpload = membership.role === 'senior' || membership.role === 'middle'
 
-    if (membership) {
-      const { data } = await supabase
-        .from('documents')
-        .select('*')
-        .eq('tenant_id', membership.tenant_id)
-        .order('created_at', { ascending: false })
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('tenant_id', membership.tenant_id)
+      .order('created_at', { ascending: false })
 
-      documents = (data as Document[]) ?? []
-    }
+    documents = (data as Document[]) ?? []
   }
 
-  return <DocumentsClient initialDocuments={documents} />
+  return <DocumentsClient initialDocuments={documents} canUpload={canUpload} />
 }

@@ -1,12 +1,13 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getUser, getMembership } from '@/lib/supabase/server'
 import AppShell from '@/components/app/AppShell'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
+  const user = await getUser()
+  if (!user) redirect('/auth/login')
 
-  if (!data.user) redirect('/auth/login')
+  // Warm the membership cache so child pages (Documents, Settings) get it free.
+  await getMembership()
 
-  return <AppShell user={data.user}>{children}</AppShell>
+  return <AppShell user={user}>{children}</AppShell>
 }

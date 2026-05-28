@@ -42,9 +42,10 @@ export async function POST(request: NextRequest) {
   }
 
   const formData = await request.formData()
-  const file = formData.get('file') as File | null
-  const department = (formData.get('department') as string) || null
+  const file        = formData.get('file') as File | null
+  const department  = (formData.get('department')  as string) || null
   const sensitivity = (formData.get('sensitivity') as string) || 'internal'
+  const customTitle = (formData.get('title')       as string) || ''
 
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
 
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
     .insert({
       tenant_id: membership.tenant_id,
       uploaded_by: user.id,
-      title: file.name.replace(/\.[^.]+$/, ''),
+      title: customTitle.trim() || file.name.replace(/\.[^.]+$/, ''),
       source: file.name,
       department,
       sensitivity,
@@ -100,7 +101,10 @@ export async function POST(request: NextRequest) {
     // Extract text from file
     let text = ''
     if (file.type === 'application/pdf') {
-      const pdfParse = (await import('pdf-parse')).default
+      // pdf-parse ESM bundle has no .default — cast to callable
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pdfParseModule = await import('pdf-parse') as any
+      const pdfParse = pdfParseModule.default ?? pdfParseModule
       const parsed = await pdfParse(buffer)
       text = parsed.text
     } else {

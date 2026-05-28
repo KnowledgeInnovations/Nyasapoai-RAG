@@ -25,7 +25,11 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // getSession() reads the JWT from the cookie locally — no network call (~0ms).
+  // getUser() (the old approach) made a round-trip to Supabase Auth on every
+  // navigation, adding 2–8 seconds of latency. Security is still enforced in
+  // server components, which call getUser() to verify the token when it matters.
+  const { data: { session } } = await supabase.auth.getSession()
 
-  return { supabaseResponse, user }
+  return { supabaseResponse, user: session?.user ?? null }
 }
