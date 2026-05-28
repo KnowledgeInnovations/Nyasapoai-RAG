@@ -16,8 +16,9 @@ export default function AppTopNav({ user }: Props) {
   const supabase = createClient()
 
   async function signOut() {
+    document.cookie = 'demo_session=; path=/; max-age=0'
     await supabase.auth.signOut()
-    router.push('/')
+    router.push('/auth/login')
   }
 
   const displayName = user.user_metadata?.name || user.email || 'User'
@@ -28,23 +29,19 @@ export default function AppTopNav({ user }: Props) {
       <div />
 
       <div className="flex items-center gap-4">
-        {/* Notifications */}
         <button className="relative rounded-lg p-2 text-gray-500 hover:bg-gray-50">
           <Bell className="h-5 w-5" />
         </button>
 
-        {/* User menu */}
         <div className="relative">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm hover:bg-gray-50"
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
               {initials}
             </span>
-            <span className="max-w-[120px] truncate font-medium text-gray-700">
-              {displayName}
-            </span>
+            <span className="max-w-[120px] truncate font-medium text-gray-700">{displayName}</span>
             <ChevronDown className="h-4 w-4 text-gray-400" />
           </button>
 

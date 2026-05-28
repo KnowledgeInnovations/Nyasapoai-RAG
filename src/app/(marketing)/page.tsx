@@ -33,7 +33,7 @@ const useCases = [
   {
     title: 'Executive briefings',
     description:
-      '"Summarise last quarter's performance across all regional reports" — a two-minute read instead of two hours.',
+      `"Summarise last quarter's performance across all regional reports" — a two-minute read instead of two hours.`,
     tag: 'Senior leadership',
   },
   {

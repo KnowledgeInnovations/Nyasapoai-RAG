@@ -14,9 +14,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Query is required' }, { status: 400 })
   }
 
-  // Get the tenant from the request header (set by middleware)
-  const tenantSubdomain = request.headers.get('x-tenant-subdomain')
-
   // Look up tenant
   const { data: membership } = await supabase
     .from('memberships')
@@ -145,11 +142,15 @@ Respond in this JSON format:
 
     const citations = chunks.map((c: { id: string; chunk_text: string; similarity: number }) => {
       const detail = chunkDetails?.find((d) => d.id === c.id)
+      const rawDocs = detail?.documents as unknown
+      const docTitle = Array.isArray(rawDocs)
+        ? (rawDocs[0] as { title: string })?.title
+        : (rawDocs as { title: string } | null)?.title
       return {
         id: c.id,
         conversation_id: conversation?.id ?? '',
         document_chunk_id: c.id,
-        document_title: (detail?.documents as { title: string } | null)?.title ?? 'Unknown document',
+        document_title: docTitle ?? 'Unknown document',
         chunk_text: c.chunk_text,
         relevance_score: c.similarity,
       }

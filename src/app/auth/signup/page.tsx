@@ -1,12 +1,12 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import Link from 'next/link'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 
 export default function SignupPage() {
-  const router = useRouter()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -35,74 +35,58 @@ export default function SignupPage() {
       <div className="w-full max-w-md">
         <div className="text-center">
           <Link href="/" className="inline-flex items-center gap-2">
-            <span className="text-2xl font-bold text-indigo-600">Nyansapo</span>
-            <span className="rounded-md bg-indigo-600 px-1.5 py-0.5 text-xs font-semibold text-white">
-              AI
-            </span>
+            <span className="text-2xl font-bold text-brand">Nyansapo</span>
+            <span className="rounded-md bg-brand px-1.5 py-0.5 text-xs font-semibold text-white">AI</span>
           </Link>
-          <h1 className="mt-6 text-2xl font-bold text-gray-900">
-            Create your account
-          </h1>
+          <h1 className="mt-6 text-2xl font-bold text-gray-900">Create your account</h1>
           <p className="mt-2 text-sm text-gray-500">
             Already have an account?{' '}
-            <Link href="/auth/login" className="font-medium text-indigo-600 hover:underline">
-              Sign in
-            </Link>
+            <Link href="/auth/login" className="font-medium text-brand hover:underline">Sign in</Link>
           </p>
         </div>
 
         {done ? (
           <div className="mt-8 rounded-2xl border border-green-200 bg-green-50 p-6 text-center">
             <p className="font-medium text-green-800">Check your email</p>
-            <p className="mt-1 text-sm text-green-600">
-              We sent a confirmation link to <strong>{email}</strong>
-            </p>
+            <p className="mt-1 text-sm text-green-600">We sent a confirmation link to <strong>{email}</strong></p>
           </div>
         ) : (
           <form onSubmit={handleSignup} className="mt-8 space-y-4">
             {error && (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {error}
-              </div>
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Full name
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Full name</label>
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                className="mt-1 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-light"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Work email
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Work email</label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                className="mt-1 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-light"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Password</label>
               <input
                 type="password"
                 required
                 minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                className="mt-1 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-light"
               />
               <p className="mt-1 text-xs text-gray-400">Minimum 8 characters</p>
             </div>
@@ -110,7 +94,7 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+              className="w-full rounded-xl bg-brand py-3 text-sm font-semibold text-white transition hover:bg-brand-dark disabled:opacity-60"
             >
               {loading ? 'Creating account…' : 'Create account'}
             </button>

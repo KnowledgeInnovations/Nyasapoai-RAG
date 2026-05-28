@@ -11,9 +11,7 @@ const cols = [
   },
   {
     title: 'Company',
-    links: [
-      { href: '/contact', label: 'Contact' },
-    ],
+    links: [{ href: '/contact', label: 'Contact' }],
   },
   {
     title: 'Legal',
@@ -31,10 +29,8 @@ export default function MarketingFooter() {
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           <div>
             <Link href="/" className="flex items-center gap-2">
-              <span className="text-lg font-bold text-indigo-600">Nyansapo</span>
-              <span className="rounded bg-indigo-600 px-1.5 py-0.5 text-xs font-semibold text-white">
-                AI
-              </span>
+              <span className="text-lg font-bold text-brand">Nyansapo</span>
+              <span className="rounded bg-brand px-1.5 py-0.5 text-xs font-semibold text-white">AI</span>
             </Link>
             <p className="mt-3 text-sm text-gray-500">
               Enterprise document intelligence for decision-makers.
@@ -43,18 +39,11 @@ export default function MarketingFooter() {
 
           {cols.map((col) => (
             <div key={col.title}>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-900">
-                {col.title}
-              </h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-900">{col.title}</h3>
               <ul className="mt-4 space-y-2">
                 {col.links.map((l) => (
                   <li key={l.href}>
-                    <Link
-                      href={l.href}
-                      className="text-sm text-gray-500 hover:text-gray-900"
-                    >
-                      {l.label}
-                    </Link>
+                    <Link href={l.href} className="text-sm text-gray-500 hover:text-gray-900">{l.label}</Link>
                   </li>
                 ))}
               </ul>
