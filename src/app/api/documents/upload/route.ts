@@ -37,10 +37,12 @@ async function embedText(text: string): Promise<number[]> {
 async function extractText(buffer: Buffer, filename: string): Promise<string> {
   const ext = path.extname(filename).toLowerCase()
 
-  // PDF
+  // PDF — use internal lib path to avoid pdf-parse's test-file side-effect at require time
   if (ext === '.pdf') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mod = await import('pdf-parse') as any
+    /* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-explicit-any */
+    // @ts-ignore
+    const mod = await import('pdf-parse/lib/pdf-parse.js') as any
+    /* eslint-enable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-explicit-any */
     const pdfParse = mod.default ?? mod
     const parsed = await pdfParse(buffer)
     return parsed.text as string
@@ -134,20 +136,41 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const text = await extractText(buffer, file.name)
+    // Step 1: extract text
+    let text: string
+    try {
+      text = await extractText(buffer, file.name)
+    } catch (extractErr) {
+      console.error('Text extraction error:', extractErr)
+      await serviceClient.from('documents').update({ status: 'failed' }).eq('id', document.id)
+      return NextResponse.json(
+        { error: `Text extraction failed: ${(extractErr as Error).message}` },
+        { status: 500 }
+      )
+    }
 
     if (!text.trim()) {
       await serviceClient.from('documents').update({ status: 'failed' }).eq('id', document.id)
       return NextResponse.json(
-        { error: 'No text could be extracted from this file. The document may be image-based or corrupted.' },
+        { error: 'No text could be extracted. The file may be image-based, password-protected, or corrupted.' },
         { status: 422 }
       )
     }
 
-    // Chunk and embed
+    // Step 2: chunk and embed
     const chunks = chunkText(text)
     for (let i = 0; i < chunks.length; i++) {
-      const embedding = await embedText(chunks[i])
+      let embedding: number[]
+      try {
+        embedding = await embedText(chunks[i])
+      } catch (embedErr) {
+        console.error('Embedding error on chunk', i, embedErr)
+        await serviceClient.from('documents').update({ status: 'failed' }).eq('id', document.id)
+        return NextResponse.json(
+          { error: `Embedding failed: ${(embedErr as Error).message}` },
+          { status: 500 }
+        )
+      }
       await serviceClient.from('document_chunks').insert({
         document_id: document.id,
         tenant_id:   membership.tenant_id,
@@ -163,6 +186,9 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     console.error('Processing error:', err)
     await serviceClient.from('documents').update({ status: 'failed' }).eq('id', document.id)
-    return NextResponse.json({ error: 'Document processing failed', document }, { status: 500 })
+    return NextResponse.json(
+      { error: `Document processing failed: ${(err as Error).message}` },
+      { status: 500 }
+    )
   }
 }
