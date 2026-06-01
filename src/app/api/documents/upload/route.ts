@@ -5,7 +5,7 @@ import path from 'path'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { parseOffice } = require('officeparser') as { parseOffice: (input: Buffer, opts: Record<string, unknown>) => Promise<unknown> }
 
-const MAX_SIZE = 50 * 1024 * 1024 // 50 MB
+const MAX_SIZE = 500 * 1024 * 1024 // 500 MB
 
 // Office formats handled by officeparser (DOCX, XLSX, PPTX, ODT, ODS, ODP, etc.)
 const OFFICE_EXTS = new Set([

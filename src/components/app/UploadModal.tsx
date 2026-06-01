@@ -138,7 +138,7 @@ export default function UploadModal({ onClose, onUploaded, categories }: Props) 
             <p className="text-sm font-semibold text-gray-700">
               {isDragging ? 'Drop files here' : 'Drag & drop files or click to browse'}
             </p>
-            <p className="mt-1 text-xs text-gray-400">PDF, DOCX, XLSX, PPTX, TXT, CSV and more · Max 50 MB</p>
+            <p className="mt-1 text-xs text-gray-400">PDF, DOCX, XLSX, PPTX, TXT, CSV and more · Max 500 MB</p>
             <input ref={fileInputRef} type="file" className="hidden" multiple
               onChange={e => e.target.files && addFiles(e.target.files)} />
           </div>
