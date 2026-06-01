@@ -37,17 +37,11 @@ async function embedText(text: string): Promise<number[]> {
 async function extractText(buffer: Buffer, filename: string): Promise<string> {
   const ext = path.extname(filename).toLowerCase()
 
-  // PDF
+  // PDF — v1.1.1 exports the parser function directly as module.exports
   if (ext === '.pdf') {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mod = await import('pdf-parse') as any
-    // Handle all CJS→ESM interop wrapping patterns (single or double default)
-    const pdfParse =
-      typeof mod === 'function'                  ? mod             :
-      typeof mod.default === 'function'          ? mod.default     :
-      typeof mod.default?.default === 'function' ? mod.default.default :
-      null
-    if (!pdfParse) throw new Error('pdf-parse did not export a callable function')
+    const pdfParse = typeof mod === 'function' ? mod : (mod.default ?? mod)
     const parsed = await pdfParse(buffer)
     return parsed.text as string
   }
