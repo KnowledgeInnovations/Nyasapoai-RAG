@@ -110,8 +110,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `File storage failed: ${storageError.message}` }, { status: 500 })
   }
 
-  // Insert document record with status 'processing'
-  const { data: document, error: docError } = await supabase
+  // Use service role for all DB writes — bypasses RLS (auth already validated above)
+  const { data: document, error: docError } = await serviceClient
     .from('documents')
     .insert({
       tenant_id:   membership.tenant_id,
@@ -130,14 +130,14 @@ export async function POST(request: NextRequest) {
 
   if (docError || !document) {
     console.error('Document insert error:', docError)
-    return NextResponse.json({ error: 'Failed to create document record' }, { status: 500 })
+    return NextResponse.json({ error: `Failed to create document record: ${docError?.message}` }, { status: 500 })
   }
 
   try {
     const text = await extractText(buffer, file.name)
 
     if (!text.trim()) {
-      await supabase.from('documents').update({ status: 'failed' }).eq('id', document.id)
+      await serviceClient.from('documents').update({ status: 'failed' }).eq('id', document.id)
       return NextResponse.json(
         { error: 'No text could be extracted from this file. The document may be image-based or corrupted.' },
         { status: 422 }
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
     const chunks = chunkText(text)
     for (let i = 0; i < chunks.length; i++) {
       const embedding = await embedText(chunks[i])
-      await supabase.from('document_chunks').insert({
+      await serviceClient.from('document_chunks').insert({
         document_id: document.id,
         tenant_id:   membership.tenant_id,
         chunk_text:  chunks[i],
@@ -158,11 +158,11 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    await supabase.from('documents').update({ status: 'ready' }).eq('id', document.id)
+    await serviceClient.from('documents').update({ status: 'ready' }).eq('id', document.id)
     return NextResponse.json({ document: { ...document, status: 'ready' } })
   } catch (err) {
     console.error('Processing error:', err)
-    await supabase.from('documents').update({ status: 'failed' }).eq('id', document.id)
+    await serviceClient.from('documents').update({ status: 'failed' }).eq('id', document.id)
     return NextResponse.json({ error: 'Document processing failed', document }, { status: 500 })
   }
 }
