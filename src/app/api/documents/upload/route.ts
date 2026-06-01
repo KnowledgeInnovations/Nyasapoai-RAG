@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import path from 'path'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { parseOffice } = require('officeparser') as { parseOffice: (input: Buffer, opts: Record<string, unknown>) => Promise<unknown> }
 
 const MAX_SIZE = 50 * 1024 * 1024 // 50 MB
 
@@ -49,11 +51,8 @@ async function extractText(buffer: Buffer, filename: string): Promise<string> {
 
   // Office formats (DOCX, XLSX, PPTX, ODT, ODS, ODP, DOC, XLS, PPT)
   if (OFFICE_EXTS.has(ext)) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { parseOffice } = await import('officeparser') as any
     const fileType = ext.slice(1) // '.docx' → 'docx'
     const raw = await parseOffice(buffer, { fileType })
-    // parseOffice may return a Buffer or string depending on version
     return Buffer.isBuffer(raw) ? raw.toString('utf-8') : String(raw ?? '')
   }
 
