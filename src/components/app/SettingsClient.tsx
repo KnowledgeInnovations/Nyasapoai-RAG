@@ -40,12 +40,17 @@ export default function SettingsClient({ email, name, role }: Props) {
     setSaving(false)
   }
 
-  const roleLabel = role === 'senior' ? 'Senior (Admin)' : role === 'middle' ? 'Middle (Manager)' : 'Staff'
-  const roleBadge = role === 'senior'
-    ? 'bg-gold/15 text-yellow-700 border-gold/30'
-    : role === 'middle'
-    ? 'bg-brand-light text-brand border-brand/20'
-    : 'bg-gray-100 text-gray-600 border-gray-200'
+  const ROLE_META: Record<string, { label: string; badge: string }> = {
+    admin:          { label: 'Admin',           badge: 'bg-gold/15 text-yellow-700 border-gold/30' },
+    exco:           { label: 'EXCO',            badge: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+    senior_manager: { label: 'Senior Manager',  badge: 'bg-brand-light text-brand border-brand/20' },
+    staff:          { label: 'Staff',           badge: 'bg-gray-100 text-gray-600 border-gray-200' },
+    // legacy
+    senior:         { label: 'Senior',          badge: 'bg-gold/15 text-yellow-700 border-gold/30' },
+    middle:         { label: 'Middle',          badge: 'bg-brand-light text-brand border-brand/20' },
+    junior:         { label: 'Junior',          badge: 'bg-gray-100 text-gray-600 border-gray-200' },
+  }
+  const { label: roleLabel, badge: roleBadge } = ROLE_META[role] ?? { label: role, badge: 'bg-gray-100 text-gray-600 border-gray-200' }
 
   return (
     <div className="max-w-2xl">
@@ -105,9 +110,9 @@ export default function SettingsClient({ email, name, role }: Props) {
         <section className="rounded-2xl border border-gray-200 bg-white p-6">
           <h2 className="font-semibold text-gray-900">Workspace</h2>
           <p className="mt-2 text-sm text-gray-500">
-            {role === 'senior'
-              ? 'As a Senior member, you have full access to manage workspace documents and settings.'
-              : 'Workspace management is available to Senior role members. Contact your admin for changes.'}
+            {['admin', 'exco', 'senior_manager', 'senior', 'middle'].includes(role)
+              ? 'You have access to upload documents, manage categories, and view dashboards.'
+              : 'Document uploads and dashboards are available to Admin, EXCO, and Senior Manager roles. Contact your admin for access.'}
           </p>
         </section>
       </div>
