@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import path from 'path'
+
+const MAX_SIZE = 50 * 1024 * 1024 // 50 MB
+
+// Office formats handled by officeparser (DOCX, XLSX, PPTX, ODT, ODS, ODP, etc.)
+const OFFICE_EXTS = new Set([
+  '.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt',
+  '.odt', '.ods', '.odp',
+])
 
 function chunkText(text: string, chunkSize = 1000, overlap = 200): string[] {
   const chunks: string[] = []
@@ -9,7 +18,7 @@ function chunkText(text: string, chunkSize = 1000, overlap = 200): string[] {
     chunks.push(text.slice(start, start + chunkSize))
     start += chunkSize - overlap
   }
-  return chunks.filter((c) => c.trim().length > 50)
+  return chunks.filter(c => c.trim().length > 50)
 }
 
 async function embedText(text: string): Promise<number[]> {
@@ -25,6 +34,30 @@ async function embedText(text: string): Promise<number[]> {
   return data.data[0].embedding
 }
 
+async function extractText(buffer: Buffer, filename: string): Promise<string> {
+  const ext = path.extname(filename).toLowerCase()
+
+  // PDF
+  if (ext === '.pdf') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mod = await import('pdf-parse') as any
+    const pdfParse = mod.default ?? mod
+    const parsed = await pdfParse(buffer)
+    return parsed.text as string
+  }
+
+  // Office formats (DOCX, XLSX, PPTX, ODT, ODS, ODP, DOC, XLS, PPT)
+  if (OFFICE_EXTS.has(ext)) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { parseOffice } = await import('officeparser') as any
+    const fileType = ext.slice(1) // '.docx' → 'docx'
+    return (await parseOffice(buffer, { fileType })) as string
+  }
+
+  // Plain text, CSV, JSON, XML, Markdown, and any other text-based format
+  return buffer.toString('utf-8')
+}
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -38,28 +71,23 @@ export async function POST(request: NextRequest) {
 
   if (!membership) return NextResponse.json({ error: 'No workspace found' }, { status: 403 })
   if (!['senior', 'middle'].includes(membership.role)) {
-    return NextResponse.json({ error: 'Only senior or middle role can upload documents' }, { status: 403 })
+    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
   }
 
-  const formData = await request.formData()
+  const formData   = await request.formData()
   const file        = formData.get('file') as File | null
   const department  = (formData.get('department')  as string) || null
   const sensitivity = (formData.get('sensitivity') as string) || 'internal'
   const customTitle = (formData.get('title')       as string) || ''
 
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
-
-  const supportedTypes = ['application/pdf', 'text/plain', 'text/csv']
-  if (!supportedTypes.includes(file.type)) {
-    return NextResponse.json(
-      { error: 'Unsupported file type. Please upload a PDF, TXT, or CSV file.' },
-      { status: 400 }
-    )
+  if (file.size > MAX_SIZE) {
+    return NextResponse.json({ error: 'File exceeds 50 MB limit' }, { status: 400 })
   }
 
   const buffer = Buffer.from(await file.arrayBuffer())
 
-  // Upload raw file to Supabase Storage (uses service role to bypass RLS)
+  // Upload raw file to Supabase Storage (service role bypasses RLS)
   const serviceClient = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -67,7 +95,7 @@ export async function POST(request: NextRequest) {
   const storagePath = `${membership.tenant_id}/${Date.now()}-${file.name}`
   const { error: storageError } = await serviceClient.storage
     .from('documents')
-    .upload(storagePath, buffer, { contentType: file.type })
+    .upload(storagePath, buffer, { contentType: file.type || 'application/octet-stream' })
 
   if (storageError) {
     console.error('Storage error:', storageError)
@@ -78,16 +106,16 @@ export async function POST(request: NextRequest) {
   const { data: document, error: docError } = await supabase
     .from('documents')
     .insert({
-      tenant_id: membership.tenant_id,
+      tenant_id:   membership.tenant_id,
       uploaded_by: user.id,
-      title: customTitle.trim() || file.name.replace(/\.[^.]+$/, ''),
-      source: file.name,
+      title:       customTitle.trim() || file.name.replace(/\.[^.]+$/, ''),
+      source:      file.name,
       department,
       sensitivity,
-      status: 'processing',
-      file_path: storagePath,
-      file_size: file.size,
-      mime_type: file.type,
+      status:      'processing',
+      file_path:   storagePath,
+      file_size:   file.size,
+      mime_type:   file.type || 'application/octet-stream',
     })
     .select()
     .single()
@@ -98,22 +126,14 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Extract text from file
-    let text = ''
-    if (file.type === 'application/pdf') {
-      // pdf-parse ESM bundle has no .default — cast to callable
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pdfParseModule = await import('pdf-parse') as any
-      const pdfParse = pdfParseModule.default ?? pdfParseModule
-      const parsed = await pdfParse(buffer)
-      text = parsed.text
-    } else {
-      text = buffer.toString('utf-8')
-    }
+    const text = await extractText(buffer, file.name)
 
     if (!text.trim()) {
       await supabase.from('documents').update({ status: 'failed' }).eq('id', document.id)
-      return NextResponse.json({ error: 'No text could be extracted from this file' }, { status: 422 })
+      return NextResponse.json(
+        { error: 'No text could be extracted from this file. The document may be image-based or corrupted.' },
+        { status: 422 }
+      )
     }
 
     // Chunk and embed
@@ -122,8 +142,8 @@ export async function POST(request: NextRequest) {
       const embedding = await embedText(chunks[i])
       await supabase.from('document_chunks').insert({
         document_id: document.id,
-        tenant_id: membership.tenant_id,
-        chunk_text: chunks[i],
+        tenant_id:   membership.tenant_id,
+        chunk_text:  chunks[i],
         chunk_index: i,
         embedding,
         metadata: { source: file.name, chunk_index: i, total_chunks: chunks.length },

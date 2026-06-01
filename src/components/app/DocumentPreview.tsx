@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { X, FileText, Download, CheckCircle2, Clock, XCircle, Hash } from 'lucide-react'
 import type { Document } from '@/types'
-import { CATEGORIES, getCategoryByValue } from '@/lib/documentCategories'
+import { getCategoryByValue } from '@/lib/documentCategories'
 
 interface Chunk { chunk_index: number; chunk_text: string }
 

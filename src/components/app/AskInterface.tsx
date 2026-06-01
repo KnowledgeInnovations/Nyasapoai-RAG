@@ -395,8 +395,7 @@ export default function AskInterface({ userName = 'there' }: { userName?: string
       <div className="shrink-0 border-t border-gray-200 bg-white p-4">
         <form onSubmit={e => { e.preventDefault(); submit(input) }} className="mx-auto max-w-3xl">
           <div className="flex items-end gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3 shadow-sm transition focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/10">
-            <input ref={fileInputRef} type="file" className="hidden"
-              accept=".pdf,.doc,.docx,.txt,.csv,.xlsx" onChange={handleFileChange} />
+            <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
             <button type="button" onClick={() => fileInputRef.current?.click()}
               disabled={uploading} title="Attach a document"
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-gray-400 transition hover:bg-gray-200 hover:text-brand disabled:opacity-40">

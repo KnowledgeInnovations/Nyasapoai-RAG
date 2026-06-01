@@ -2,19 +2,22 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FileText, Clock, CheckCircle2, XCircle, Lock } from 'lucide-react'
+import { FileText, Clock, CheckCircle2, XCircle, Lock, Pencil, Plus } from 'lucide-react'
 import type { Document } from '@/types'
 import { formatDate } from '@/lib/utils'
-import { CATEGORIES, getCategoryByValue } from '@/lib/documentCategories'
+import { CATEGORIES, buildCategory } from '@/lib/documentCategories'
+import type { Category, CategoryInit } from '@/lib/documentCategories'
 import { cn } from '@/lib/utils'
 import dynamic from 'next/dynamic'
 
 const UploadModal      = dynamic(() => import('./UploadModal'),      { ssr: false })
 const DocumentPreview  = dynamic(() => import('./DocumentPreview'),  { ssr: false })
+const CategoryModal    = dynamic(() => import('./CategoryModal'),    { ssr: false })
 
 interface Props {
-  initialDocuments: Document[]
-  canUpload: boolean
+  initialDocuments:  Document[]
+  canUpload:         boolean
+  initialCategories: CategoryInit[]
 }
 
 const statusConfig = {
@@ -23,31 +26,53 @@ const statusConfig = {
   failed:     { icon: XCircle,      label: 'Failed',     cls: 'text-red-600   bg-red-50   border-red-200'   },
 }
 
-export default function DocumentsClient({ initialDocuments, canUpload }: Props) {
-  const [documents]    = useState<Document[]>(initialDocuments)
-  const [filter,        setFilter]       = useState('all')
-  const [showUpload,    setShowUpload]   = useState(false)
-  const [previewDocId,  setPreviewDocId] = useState<string | null>(null)
+export default function DocumentsClient({ initialDocuments, canUpload, initialCategories }: Props) {
+  const [documents]           = useState<Document[]>(initialDocuments)
+  const [categories, setCategories] = useState<Category[]>(
+    () => initialCategories.map(c => buildCategory(c.value, c.label, c.description, c.iconName, c.colorName, c.dbId, c.isCustom))
+  )
+  const [filter,         setFilter]        = useState('all')
+  const [showUpload,     setShowUpload]    = useState(false)
+  const [previewDocId,   setPreviewDocId]  = useState<string | null>(null)
+  // undefined = closed, null = add mode, Category = edit mode
+  const [editingCategory, setEditingCategory] = useState<Category | null | undefined>(undefined)
   const router = useRouter()
 
-  // Category counts
-  const counts = CATEGORIES.reduce<Record<string, number>>((acc, cat) => {
+  const getCat = (value: string | null | undefined) =>
+    categories.find(c => c.value === value)
+
+  const counts = categories.reduce<Record<string, number>>((acc, cat) => {
     acc[cat.value] = documents.filter(d => d.department === cat.value).length
     return acc
   }, {})
-  const uncategorised = documents.filter(d => !d.department || !CATEGORIES.find(c => c.value === d.department)).length
+  const uncategorised = documents.filter(d => !d.department || !categories.find(c => c.value === d.department)).length
   const totalCount    = documents.length
 
-  // Filtered list
   const filtered = filter === 'all'
     ? documents
     : filter === 'uncategorised'
     ? documents.filter(d => !d.department)
     : documents.filter(d => d.department === filter)
 
-  function handleUploaded() {
-    router.refresh()
-    // Optimistically refresh — router.refresh() will re-fetch server data
+  function handleUploaded() { router.refresh() }
+
+  function handleCategorySaved(cat: Category) {
+    setCategories(prev => {
+      const idx = prev.findIndex(c => c.value === cat.value)
+      if (idx >= 0) { const u = [...prev]; u[idx] = cat; return u }
+      return [...prev, cat]
+    })
+    setEditingCategory(undefined)
+  }
+
+  function handleCategoryDeleted(value: string) {
+    setCategories(prev => {
+      // Revert to built-in default if one exists; otherwise remove entirely
+      const builtIn = CATEGORIES.find(c => c.value === value)
+      if (builtIn) return prev.map(c => c.value === value ? builtIn : c)
+      return prev.filter(c => c.value !== value)
+    })
+    setEditingCategory(undefined)
   }
 
   return (
@@ -78,28 +103,47 @@ export default function DocumentsClient({ initialDocuments, canUpload }: Props) 
 
       {/* ── Category overview cards ─────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-        {CATEGORIES.map(cat => (
-          <button key={cat.value}
-            onClick={() => setFilter(filter === cat.value ? 'all' : cat.value)}
-            disabled={counts[cat.value] === 0}
-            className={cn(
-              'group flex flex-col items-start rounded-2xl border p-4 text-left transition hover:shadow-md disabled:cursor-default disabled:opacity-40',
-              filter === cat.value
-                ? `${cat.activeBorder} ${cat.activeBg} shadow-sm`
-                : 'border-gray-200 bg-white hover:border-gray-300'
-            )}>
-            <cat.icon className={cn(
-              'mb-2 h-5 w-5 transition',
-              filter === cat.value ? cat.textColor : 'text-gray-400 group-hover:text-gray-500',
-            )} />
-            <p className={cn('text-xl font-black leading-none', filter === cat.value ? cat.activeText : 'text-gray-900')}>
-              {counts[cat.value]}
-            </p>
-            <p className={cn('mt-1 text-xs font-semibold leading-tight', filter === cat.value ? cat.activeText : 'text-gray-500')}>
-              {cat.label}
-            </p>
-          </button>
+        {categories.map(cat => (
+          <div key={cat.value} className="relative group">
+            <button
+              onClick={() => setFilter(filter === cat.value ? 'all' : cat.value)}
+              disabled={(counts[cat.value] ?? 0) === 0 && filter !== cat.value}
+              className={cn(
+                'w-full flex flex-col items-start rounded-2xl border p-4 text-left transition hover:shadow-md disabled:cursor-default disabled:opacity-40',
+                filter === cat.value
+                  ? `${cat.activeBorder} ${cat.activeBg} shadow-sm`
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              )}>
+              <cat.icon className={cn(
+                'mb-2 h-5 w-5 transition',
+                filter === cat.value ? cat.textColor : 'text-gray-400 group-hover:text-gray-500',
+              )} />
+              <p className={cn('text-xl font-black leading-none', filter === cat.value ? cat.activeText : 'text-gray-900')}>
+                {counts[cat.value] ?? 0}
+              </p>
+              <p className={cn('mt-1 text-xs font-semibold leading-tight', filter === cat.value ? cat.activeText : 'text-gray-500')}>
+                {cat.label}
+              </p>
+            </button>
+
+            {canUpload && (
+              <button
+                onClick={e => { e.stopPropagation(); setEditingCategory(cat) }}
+                className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-lg bg-white/80 text-gray-400 opacity-0 shadow-sm backdrop-blur-sm transition hover:bg-white hover:text-gray-700 group-hover:opacity-100">
+                <Pencil className="h-3 w-3" />
+              </button>
+            )}
+          </div>
         ))}
+
+        {canUpload && (
+          <button
+            onClick={() => setEditingCategory(null)}
+            className="flex flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-gray-200 p-4 text-gray-400 transition hover:border-brand/40 hover:text-brand">
+            <Plus className="h-5 w-5" />
+            <p className="text-xs font-semibold">Add</p>
+          </button>
+        )}
       </div>
 
       {/* ── Filter tabs ─────────────────────────────────────── */}
@@ -114,7 +158,7 @@ export default function DocumentsClient({ initialDocuments, canUpload }: Props) 
           All ({totalCount})
         </button>
 
-        {CATEGORIES.filter(cat => counts[cat.value] > 0).map(cat => (
+        {categories.filter(cat => (counts[cat.value] ?? 0) > 0).map(cat => (
           <button key={cat.value} onClick={() => setFilter(cat.value)}
             className={cn(
               'rounded-full border px-4 py-1.5 text-xs font-semibold transition',
@@ -158,9 +202,7 @@ export default function DocumentsClient({ initialDocuments, canUpload }: Props) 
       ) : filtered.length === 0 ? (
         <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-white p-12 text-center">
           <FileText className="mx-auto h-8 w-8 text-gray-300" />
-          <p className="mt-3 text-sm font-medium text-gray-400">
-            No documents in this category yet.
-          </p>
+          <p className="mt-3 text-sm font-medium text-gray-400">No documents in this category yet.</p>
           {canUpload && (
             <button onClick={() => setShowUpload(true)}
               className="mt-4 rounded-xl border border-brand/30 bg-brand-light px-4 py-2 text-xs font-semibold text-brand transition hover:bg-brand hover:text-white">
@@ -183,18 +225,14 @@ export default function DocumentsClient({ initialDocuments, canUpload }: Props) 
             <tbody className="divide-y divide-gray-100">
               {filtered.map(doc => {
                 const s   = statusConfig[doc.status]
-                const cat = getCategoryByValue(doc.department)
+                const cat = getCat(doc.department)
                 return (
-                  <tr
-                    key={doc.id}
+                  <tr key={doc.id}
                     onClick={() => setPreviewDocId(doc.id)}
                     className={cn(
                       'cursor-pointer transition-colors',
-                      previewDocId === doc.id
-                        ? 'bg-brand-light'
-                        : 'hover:bg-gray-50/80'
-                    )}
-                  >
+                      previewDocId === doc.id ? 'bg-brand-light' : 'hover:bg-gray-50/80'
+                    )}>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
                         <div className={cn(
@@ -203,8 +241,7 @@ export default function DocumentsClient({ initialDocuments, canUpload }: Props) 
                         )}>
                           {cat
                             ? <cat.icon className={cn('h-4 w-4', cat.textColor)} />
-                            : <FileText className="h-4 w-4 text-gray-400" />
-                          }
+                            : <FileText className="h-4 w-4 text-gray-400" />}
                         </div>
                         <div className="min-w-0">
                           <p className={cn('truncate font-semibold max-w-[200px]', previewDocId === doc.id ? 'text-brand' : 'text-gray-900')}>{doc.title}</p>
@@ -252,15 +289,24 @@ export default function DocumentsClient({ initialDocuments, canUpload }: Props) 
         </div>
       )}
 
-      {/* ── Upload modal ────────────────────────────────────── */}
+      {/* ── Modals ─────────────────────────────────────────── */}
       {showUpload && (
         <UploadModal
+          categories={categories}
           onClose={() => setShowUpload(false)}
           onUploaded={() => { setShowUpload(false); handleUploaded() }}
         />
       )}
 
-      {/* ── Document preview panel ───────────────────────────── */}
+      {editingCategory !== undefined && (
+        <CategoryModal
+          category={editingCategory ?? undefined}
+          onSave={handleCategorySaved}
+          onDelete={handleCategoryDeleted}
+          onClose={() => setEditingCategory(undefined)}
+        />
+      )}
+
       <DocumentPreview
         docId={previewDocId}
         onClose={() => setPreviewDocId(null)}

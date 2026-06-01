@@ -3,7 +3,8 @@
 import { useState, useRef, useCallback } from 'react'
 import { X, Upload, FileText, CheckCircle2, AlertCircle, Loader2, Paperclip } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { CATEGORIES, SENSITIVITIES } from '@/lib/documentCategories'
+import { SENSITIVITIES } from '@/lib/documentCategories'
+import type { Category } from '@/lib/documentCategories'
 
 interface FileItem {
   file: File
@@ -13,8 +14,9 @@ interface FileItem {
 }
 
 interface Props {
-  onClose: () => void
+  onClose:    () => void
   onUploaded: () => void
+  categories: Category[]
 }
 
 function formatBytes(bytes: number) {
@@ -23,7 +25,7 @@ function formatBytes(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export default function UploadModal({ onClose, onUploaded }: Props) {
+export default function UploadModal({ onClose, onUploaded, categories }: Props) {
   const [files,       setFiles]       = useState<FileItem[]>([])
   const [category,    setCategory]    = useState('')
   const [sensitivity, setSensitivity] = useState('internal')
@@ -33,14 +35,9 @@ export default function UploadModal({ onClose, onUploaded }: Props) {
 
   const addFiles = useCallback((incoming: FileList | File[]) => {
     const arr = Array.from(incoming)
-    const allowed = ['application/pdf', 'text/plain', 'text/csv']
-    const valid = arr.filter(f => allowed.includes(f.type))
-    if (valid.length < arr.length) {
-      // Just skip unsupported silently — user sees only valid ones added
-    }
     setFiles(prev => {
       const existing = new Set(prev.map(f => f.file.name + f.file.size))
-      const newItems: FileItem[] = valid
+      const newItems: FileItem[] = arr
         .filter(f => !existing.has(f.name + f.size))
         .map(f => ({
           file: f,
@@ -113,7 +110,7 @@ export default function UploadModal({ onClose, onUploaded }: Props) {
         <div className="flex shrink-0 items-start justify-between border-b border-gray-100 px-6 py-5">
           <div>
             <h2 className="text-lg font-bold text-gray-900">Upload Documents</h2>
-            <p className="mt-0.5 text-sm text-gray-500">Supported: PDF, TXT, CSV</p>
+            <p className="mt-0.5 text-sm text-gray-500">PDF, Word, Excel, PowerPoint, CSV, TXT and more</p>
           </div>
           <button onClick={onClose} disabled={uploading}
             className="flex h-8 w-8 items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition disabled:opacity-40">
@@ -141,9 +138,8 @@ export default function UploadModal({ onClose, onUploaded }: Props) {
             <p className="text-sm font-semibold text-gray-700">
               {isDragging ? 'Drop files here' : 'Drag & drop files or click to browse'}
             </p>
-            <p className="mt-1 text-xs text-gray-400">PDF, TXT, CSV · Max 50 MB per file</p>
+            <p className="mt-1 text-xs text-gray-400">PDF, DOCX, XLSX, PPTX, TXT, CSV and more · Max 50 MB</p>
             <input ref={fileInputRef} type="file" className="hidden" multiple
-              accept=".pdf,.txt,.csv"
               onChange={e => e.target.files && addFiles(e.target.files)} />
           </div>
 
@@ -153,7 +149,7 @@ export default function UploadModal({ onClose, onUploaded }: Props) {
               Category <span className="text-red-500">*</span>
             </p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {CATEGORIES.map(cat => (
+              {categories.map(cat => (
                 <button key={cat.value} type="button"
                   onClick={() => setCategory(cat.value)}
                   className={cn(
