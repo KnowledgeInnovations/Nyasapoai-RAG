@@ -2,19 +2,21 @@ import type { Metadata } from 'next'
 import { getMembership, createClient } from '@/lib/supabase/server'
 import DocumentsClient from '@/components/app/DocumentsClient'
 import type { Document } from '@/types'
-import { mergeWithDbCategories, type DbCategory, type CategoryInit } from '@/lib/documentCategories'
+import { mergeWithDbCategories, type DbCategory } from '@/lib/documentCategories'
 
-export const metadata: Metadata = { title: 'Documents — Devtraco Plus' }
+export const metadata: Metadata = { title: 'Documents - Devtraco Plus' }
 
 export default async function DocumentsPage() {
   const membership = await getMembership()
 
-  let documents: Document[] = []
-  let canUpload = false
+  let documents:         Document[] = []
+  let canUpload  = false
+  let canDelete  = false
   let initialCategories = mergeWithDbCategories([])
 
   if (membership) {
-    canUpload = ['admin', 'exco', 'senior_manager'].includes(membership.role)
+    canUpload = ['admin', 'exco', 'senior_manager', 'senior', 'middle'].includes(membership.role)
+    canDelete = membership.role === 'admin'
 
     const supabase = await createClient()
     const [{ data: docs }, { data: dbCats }] = await Promise.all([
@@ -29,7 +31,7 @@ export default async function DocumentsPage() {
         .eq('tenant_id', membership.tenant_id),
     ])
 
-    documents         = (docs    as Document[])   ?? []
+    documents         = (docs   as Document[])   ?? []
     initialCategories = mergeWithDbCategories((dbCats as DbCategory[]) ?? [])
   }
 
@@ -37,6 +39,7 @@ export default async function DocumentsPage() {
     <DocumentsClient
       initialDocuments={documents}
       canUpload={canUpload}
+      canDelete={canDelete}
       initialCategories={initialCategories}
     />
   )

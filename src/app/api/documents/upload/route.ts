@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (!membership) return NextResponse.json({ error: 'No workspace found' }, { status: 403 })
-  if (!['admin', 'exco', 'senior_manager'].includes(membership.role)) {
+  if (!['admin', 'exco', 'senior_manager', 'senior', 'middle'].includes(membership.role)) {
     return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
   }
 
@@ -90,16 +90,24 @@ export async function POST(request: NextRequest) {
   // Upload raw file to Supabase Storage (service role bypasses RLS)
   const serviceClient = createServiceClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
   )
-  const storagePath = `${membership.tenant_id}/${Date.now()}-${file.name}`
+
+  // Ensure the bucket exists (no-op if it already does)
+  await serviceClient.storage.createBucket('documents', { public: false }).catch(() => {})
+
+  // Sanitise filename — replace spaces/special chars so the storage path is always valid
+  const safeFilename = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')
+  const storagePath  = `${membership.tenant_id}/${Date.now()}-${safeFilename}`
+
   const { error: storageError } = await serviceClient.storage
     .from('documents')
     .upload(storagePath, buffer, { contentType: file.type || 'application/octet-stream' })
 
   if (storageError) {
     console.error('Storage error:', storageError)
-    return NextResponse.json({ error: 'File storage failed' }, { status: 500 })
+    return NextResponse.json({ error: `File storage failed: ${storageError.message}` }, { status: 500 })
   }
 
   // Insert document record with status 'processing'

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { FileText, Clock, CheckCircle2, XCircle, Lock, Pencil, Plus } from 'lucide-react'
+import { FileText, Clock, CheckCircle2, XCircle, Lock, Pencil, Plus, Trash2 } from 'lucide-react'
 import type { Document } from '@/types'
 import { formatDate } from '@/lib/utils'
 import { CATEGORIES, buildCategory } from '@/lib/documentCategories'
@@ -17,6 +17,7 @@ const CategoryModal    = dynamic(() => import('./CategoryModal'),    { ssr: fals
 interface Props {
   initialDocuments:  Document[]
   canUpload:         boolean
+  canDelete:         boolean
   initialCategories: CategoryInit[]
 }
 
@@ -26,8 +27,8 @@ const statusConfig = {
   failed:     { icon: XCircle,      label: 'Failed',     cls: 'text-red-600   bg-red-50   border-red-200'   },
 }
 
-export default function DocumentsClient({ initialDocuments, canUpload, initialCategories }: Props) {
-  const [documents]           = useState<Document[]>(initialDocuments)
+export default function DocumentsClient({ initialDocuments, canUpload, canDelete, initialCategories }: Props) {
+  const [documents, setDocuments]   = useState<Document[]>(initialDocuments)
   const [categories, setCategories] = useState<Category[]>(
     () => initialCategories.map(c => buildCategory(c.value, c.label, c.description, c.iconName, c.colorName, c.dbId, c.isCustom))
   )
@@ -36,6 +37,9 @@ export default function DocumentsClient({ initialDocuments, canUpload, initialCa
   const [previewDocId,   setPreviewDocId]  = useState<string | null>(null)
   // undefined = closed, null = add mode, Category = edit mode
   const [editingCategory, setEditingCategory] = useState<Category | null | undefined>(undefined)
+  // delete state
+  const [deleteTarget,   setDeleteTarget]  = useState<{ id: string; title: string } | null>(null)
+  const [deleting,       setDeleting]      = useState(false)
   const router = useRouter()
 
   const getCat = (value: string | null | undefined) =>
@@ -54,7 +58,30 @@ export default function DocumentsClient({ initialDocuments, canUpload, initialCa
     ? documents.filter(d => !d.department)
     : documents.filter(d => d.department === filter)
 
-  function handleUploaded() { router.refresh() }
+  function handleUploaded() {
+    router.refresh()
+    // also re-fetch so new doc appears without full reload
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/documents/${deleteTarget.id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setDocuments(prev => prev.filter(d => d.id !== deleteTarget.id))
+        if (previewDocId === deleteTarget.id) setPreviewDocId(null)
+      } else {
+        const data = await res.json()
+        alert(data.error ?? 'Delete failed')
+      }
+    } catch {
+      alert('Delete failed — please try again')
+    } finally {
+      setDeleting(false)
+      setDeleteTarget(null)
+    }
+  }
 
   function handleCategorySaved(cat: Category) {
     setCategories(prev => {
@@ -220,6 +247,7 @@ export default function DocumentsClient({ initialDocuments, canUpload, initialCa
                 <th className="hidden px-5 py-3.5 text-xs font-semibold text-gray-500 sm:table-cell">Access</th>
                 <th className="px-5 py-3.5 text-xs font-semibold text-gray-500">Status</th>
                 <th className="hidden px-5 py-3.5 text-xs font-semibold text-gray-500 lg:table-cell">Added</th>
+                {canDelete && <th className="w-10 px-3 py-3.5" />}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -281,6 +309,16 @@ export default function DocumentsClient({ initialDocuments, canUpload, initialCa
                     <td className="hidden px-5 py-3.5 text-xs text-gray-400 lg:table-cell">
                       {formatDate(doc.created_at)}
                     </td>
+                    {canDelete && (
+                      <td className="px-3 py-3.5" onClick={e => e.stopPropagation()}>
+                        <button
+                          onClick={() => setDeleteTarget({ id: doc.id, title: doc.title })}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-300 transition hover:bg-red-50 hover:text-red-500"
+                          title="Delete document">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 )
               })}
@@ -311,6 +349,35 @@ export default function DocumentsClient({ initialDocuments, canUpload, initialCa
         docId={previewDocId}
         onClose={() => setPreviewDocId(null)}
       />
+
+      {/* ── Delete confirmation ─────────────────────────────── */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 border border-red-200">
+              <Trash2 className="h-5 w-5 text-red-500" />
+            </div>
+            <h3 className="mt-4 text-base font-bold text-gray-900">Delete this document?</h3>
+            <p className="mt-1.5 text-sm text-gray-500 leading-relaxed">
+              <span className="font-medium text-gray-700">&ldquo;{deleteTarget.title}&rdquo;</span> will be permanently removed including all AI knowledge chunks. This cannot be undone.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 disabled:opacity-50">
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={deleting}
+                className="flex-1 rounded-xl bg-red-500 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-600 disabled:opacity-50">
+                {deleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
