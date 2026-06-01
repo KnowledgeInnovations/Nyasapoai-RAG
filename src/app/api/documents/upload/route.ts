@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import path from 'path'
-import { PDFParse } from 'pdf-parse'
 
 const MAX_SIZE = 50 * 1024 * 1024 // 50 MB
 
@@ -38,11 +37,14 @@ async function embedText(text: string): Promise<number[]> {
 async function extractText(buffer: Buffer, filename: string): Promise<string> {
   const ext = path.extname(filename).toLowerCase()
 
-  // PDF — pdf-parse v2 static import (avoids Turbopack dynamic module cache issues)
+  // PDF — dynamic import keeps the module out of the route's static load so
+  // browser-API initialisation code in pdf-parse v2 never runs at startup
   if (ext === '.pdf') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { PDFParse } = await import('pdf-parse') as any
     const parser = new PDFParse({ data: buffer })
     const result = await parser.getText()
-    return result.text ?? ''
+    return (result.text as string) ?? ''
   }
 
   // Office formats (DOCX, XLSX, PPTX, ODT, ODS, ODP, DOC, XLS, PPT)
