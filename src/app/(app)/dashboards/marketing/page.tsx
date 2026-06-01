@@ -7,9 +7,9 @@ import { CATEGORIES } from '@/lib/documentCategories'
 import DashboardShell from '@/components/app/DashboardShell'
 import { StatCard, DocList, QueryList, PlaceholderCard } from '@/components/app/DashboardWidgets'
 
-export const metadata: Metadata = { title: 'Marketing Dashboard — Devtraco Plus' }
+export const metadata: Metadata = { title: 'Marketing Dashboard - Devtraco Plus' }
 
-const ALLOWED = ['admin', 'exco', 'senior_manager']
+const ALLOWED = ['admin', 'exco', 'senior_manager', 'senior', 'middle']
 
 function svc() {
   return createServiceClient(
@@ -51,8 +51,8 @@ export default async function MarketingDashboard() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Megaphone}     label="Workspace Documents"  value={String(docCount ?? 0)}   sub="Available for AI search"       live color="text-purple-600 bg-purple-50" />
         <StatCard icon={MessageSquare} label="AI Queries (30 days)" value={String(convsMonth ?? 0)} sub={`${convsTotal ?? 0} all-time`}  live color="text-brand bg-brand-light" />
-        <StatCard icon={TrendingUp}    label="Leads Generated"      value="—"                       sub="Connect CRM to track"               color="text-amber-600 bg-amber-50" />
-        <StatCard icon={BarChart3}     label="Marketing ROI"        value="—"                       sub="Connect analytics to track"         color="text-green-600 bg-green-50" />
+        <StatCard icon={TrendingUp}    label="Leads Generated"      value="N/A"                     sub="Connect CRM to track"               color="text-amber-600 bg-amber-50" />
+        <StatCard icon={BarChart3}     label="Marketing ROI"        value="N/A"                     sub="Connect analytics to track"         color="text-green-600 bg-green-50" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">

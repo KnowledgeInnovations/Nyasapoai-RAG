@@ -7,9 +7,9 @@ import {
   HardHat, Banknote, Users, Radio, ArrowRight,
 } from 'lucide-react'
 
-export const metadata: Metadata = { title: 'Dashboards — Devtraco Plus' }
+export const metadata: Metadata = { title: 'Dashboards - Devtraco Plus' }
 
-const ALLOWED_ROLES = ['admin', 'exco', 'senior_manager']
+const ALLOWED_ROLES = ['admin', 'exco', 'senior_manager', 'senior', 'middle']
 
 const DASHBOARDS = [
   {
@@ -18,7 +18,6 @@ const DASHBOARDS = [
     description: 'Company-wide KPIs, sales performance, project status, and real-time alerts for leadership.',
     icon:        Crown,
     color:       'text-indigo-600 bg-indigo-50 border-indigo-200',
-    roles:       ['admin', 'exco', 'senior_manager'],
   },
   {
     href:        '/dashboards/sales',
@@ -26,7 +25,6 @@ const DASHBOARDS = [
     description: 'Leads, pipeline status, reservations, sales targets, and top-performing executives.',
     icon:        TrendingUp,
     color:       'text-amber-600 bg-amber-50 border-amber-200',
-    roles:       ['admin', 'exco', 'senior_manager'],
   },
   {
     href:        '/dashboards/marketing',
@@ -34,7 +32,6 @@ const DASHBOARDS = [
     description: 'Campaign performance, lead generation metrics, ROI, and digital marketing analytics.',
     icon:        Megaphone,
     color:       'text-purple-600 bg-purple-50 border-purple-200',
-    roles:       ['admin', 'exco', 'senior_manager'],
   },
   {
     href:        '/dashboards/client-service',
@@ -42,7 +39,6 @@ const DASHBOARDS = [
     description: 'Onboarding status, follow-up activities, payments, and customer satisfaction scores.',
     icon:        HeartHandshake,
     color:       'text-cyan-600 bg-cyan-50 border-cyan-200',
-    roles:       ['admin', 'exco', 'senior_manager'],
   },
   {
     href:        '/dashboards/development',
@@ -50,7 +46,6 @@ const DASHBOARDS = [
     description: 'Project progress, construction milestones, contractor performance, and budget tracking.',
     icon:        HardHat,
     color:       'text-orange-600 bg-orange-50 border-orange-200',
-    roles:       ['admin', 'exco', 'senior_manager'],
   },
   {
     href:        '/dashboards/finance',
@@ -58,7 +53,6 @@ const DASHBOARDS = [
     description: 'Revenue collection, outstanding payments, cash flow, and financial risk indicators.',
     icon:        Banknote,
     color:       'text-green-600 bg-green-50 border-green-200',
-    roles:       ['admin', 'exco', 'senior_manager'],
   },
   {
     href:        '/dashboards/hr',
@@ -66,7 +60,6 @@ const DASHBOARDS = [
     description: 'Headcount, recruitment, leave management, KPI tracking, and staff development.',
     icon:        Users,
     color:       'text-rose-600 bg-rose-50 border-rose-200',
-    roles:       ['admin', 'exco', 'senior_manager'],
   },
   {
     href:        '/dashboards/communications',
@@ -74,7 +67,6 @@ const DASHBOARDS = [
     description: 'Internal reach, email engagement, staff metrics, and announcement tracking.',
     icon:        Radio,
     color:       'text-blue-600 bg-blue-50 border-blue-200',
-    roles:       ['admin', 'exco', 'senior_manager'],
   },
 ]
 
@@ -83,12 +75,11 @@ export default async function DashboardsHubPage() {
   if (!membership || !ALLOWED_ROLES.includes(membership.role)) redirect('/ask')
 
   const role = membership.role
-  const accessible = DASHBOARDS.filter(d => d.roles.includes(role))
+  const displayRole = role.replace(/_/g, ' ')
 
   return (
     <div className="space-y-6">
 
-      {/* ── Header ─────────────────────────────────────────────── */}
       <div>
         <h1 className="text-xl font-bold text-gray-900">Dashboards</h1>
         <p className="mt-1 text-sm text-gray-500">
@@ -96,16 +87,14 @@ export default async function DashboardsHubPage() {
         </p>
       </div>
 
-      {/* ── Role badge ─────────────────────────────────────────── */}
       <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-xs shadow-sm">
         <span className="h-2 w-2 rounded-full bg-green-500" />
-        <span className="font-semibold text-gray-700 capitalize">{role.replace('_', ' ')}</span>
-        <span className="text-gray-400">· {accessible.length} dashboards available</span>
+        <span className="font-semibold text-gray-700 capitalize">{displayRole}</span>
+        <span className="text-gray-400">&middot; {DASHBOARDS.length} dashboards available</span>
       </div>
 
-      {/* ── Dashboard grid ─────────────────────────────────────── */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {accessible.map(d => (
+        {DASHBOARDS.map(d => (
           <Link
             key={d.href}
             href={d.href}

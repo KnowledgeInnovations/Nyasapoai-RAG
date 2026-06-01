@@ -18,7 +18,8 @@ interface HistoryItem {
   created_at: string
 }
 
-const DASHBOARD_ROLES = ['admin', 'exco', 'senior_manager']
+// New roles + legacy roles (senior/middle/junior) — remove legacy entries once DB is migrated
+const DASHBOARD_ROLES = ['admin', 'exco', 'senior_manager', 'senior', 'middle']
 
 function getNavItems(role: string) {
   return [

@@ -7,9 +7,9 @@ import { CATEGORIES } from '@/lib/documentCategories'
 import DashboardShell from '@/components/app/DashboardShell'
 import { StatCard, DocList, QueryList, PlaceholderCard } from '@/components/app/DashboardWidgets'
 
-export const metadata: Metadata = { title: 'Development Dashboard — Devtraco Plus' }
+export const metadata: Metadata = { title: 'Development Dashboard - Devtraco Plus' }
 
-const ALLOWED = ['admin', 'exco', 'senior_manager']
+const ALLOWED = ['admin', 'exco', 'senior_manager', 'senior', 'middle']
 
 function svc() {
   return createServiceClient(
@@ -47,22 +47,20 @@ export default async function DevelopmentDashboard() {
   ])
 
   const siteReportCat = CATEGORIES.find(c => c.value === 'site-reports')
-  const designCat     = CATEGORIES.find(c => c.value === 'design-plans')
-  const now = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-
-  // Merge both doc lists for the combined view
   const allDevDocs = [...(siteDocs ?? []), ...(designDocs ?? [])]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 8)
+
+  const now = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
   return (
     <DashboardShell title="Development Dashboard" description="Project progress, construction milestones, contractor performance, and budget tracking." lastUpdated={now}>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={HardHat}       label="Site Reports"          value={String(siteReportCount ?? 0)} sub="Progress & inspection reports" live color="text-orange-600 bg-orange-50" />
-        <StatCard icon={Ruler}         label="Design & Plans"        value={String(designCount ?? 0)}     sub="Architectural drawings"       live color="text-cyan-600 bg-cyan-50" />
-        <StatCard icon={MessageSquare} label="AI Queries (7 days)"   value={String(convsWeek ?? 0)}       sub={`${convsTotal ?? 0} all-time`} live color="text-brand bg-brand-light" />
-        <StatCard icon={Hammer}        label="Active Projects"       value="—"                            sub="Connect PMIS to track"              color="text-purple-600 bg-purple-50" />
+        <StatCard icon={HardHat}       label="Site Reports"         value={String(siteReportCount ?? 0)} sub="Progress and inspection reports" live color="text-orange-600 bg-orange-50" />
+        <StatCard icon={Ruler}         label="Design and Plans"     value={String(designCount ?? 0)}     sub="Architectural drawings"         live color="text-cyan-600 bg-cyan-50" />
+        <StatCard icon={MessageSquare} label="AI Queries (7 days)"  value={String(convsWeek ?? 0)}       sub={`${convsTotal ?? 0} all-time`}  live color="text-brand bg-brand-light" />
+        <StatCard icon={Hammer}        label="Active Projects"      value="N/A"                          sub="Connect PMIS to track"              color="text-purple-600 bg-purple-50" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -72,12 +70,12 @@ export default async function DevelopmentDashboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <DocList docs={allDevDocs} cat={siteReportCat} title="Site Reports & Design Plans" emptyText="No development documents yet" />
+        <DocList docs={allDevDocs} cat={siteReportCat} title="Site Reports and Design Plans" emptyText="No development documents yet" />
         <QueryList convs={recentConvs} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <PlaceholderCard label="Project Delays & Alerts" />
+        <PlaceholderCard label="Project Delays and Alerts" />
         <PlaceholderCard label="Procurement Status" />
         <PlaceholderCard label="Change Request Management" />
       </div>

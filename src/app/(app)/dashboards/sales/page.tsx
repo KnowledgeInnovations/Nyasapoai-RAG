@@ -7,9 +7,9 @@ import { CATEGORIES } from '@/lib/documentCategories'
 import DashboardShell from '@/components/app/DashboardShell'
 import { StatCard, DocList, QueryList, PlaceholderCard } from '@/components/app/DashboardWidgets'
 
-export const metadata: Metadata = { title: 'Sales Dashboard — Devtraco Plus' }
+export const metadata: Metadata = { title: 'Sales Dashboard - Devtraco Plus' }
 
-const ALLOWED = ['admin', 'exco', 'senior_manager']
+const ALLOWED = ['admin', 'exco', 'senior_manager', 'senior', 'middle']
 
 function svc() {
   return createServiceClient(
@@ -51,8 +51,8 @@ export default async function SalesDashboard() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={FileText}      label="Contracts Indexed"      value={String(contractCount ?? 0)} sub="Ready for AI search"         live color="text-amber-600 bg-amber-50" />
         <StatCard icon={MessageSquare} label="AI Queries (7 days)"    value={String(convsWeek ?? 0)}     sub={`${convsTotal ?? 0} all-time`} live color="text-brand bg-brand-light" />
-        <StatCard icon={TrendingUp}    label="Leads Generated"        value="—"                          sub="Connect CRM to track"               color="text-green-600 bg-green-50" />
-        <StatCard icon={Target}        label="Sales Target vs Actual" value="—"                          sub="Connect ERP to track"               color="text-purple-600 bg-purple-50" />
+        <StatCard icon={TrendingUp}    label="Leads Generated"        value="N/A"                        sub="Connect CRM to track"               color="text-green-600 bg-green-50" />
+        <StatCard icon={Target}        label="Sales Target vs Actual" value="N/A"                        sub="Connect ERP to track"               color="text-purple-600 bg-purple-50" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -68,7 +68,7 @@ export default async function SalesDashboard() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <PlaceholderCard label="Sales Pipeline Status" />
-        <PlaceholderCard label="Customer Engagement & Lead Scoring" />
+        <PlaceholderCard label="Customer Engagement and Lead Scoring" />
       </div>
     </DashboardShell>
   )

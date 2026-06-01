@@ -7,9 +7,9 @@ import { CATEGORIES } from '@/lib/documentCategories'
 import DashboardShell from '@/components/app/DashboardShell'
 import { StatCard, DocList, QueryList, PlaceholderCard } from '@/components/app/DashboardWidgets'
 
-export const metadata: Metadata = { title: 'Communications Dashboard — Devtraco Plus' }
+export const metadata: Metadata = { title: 'Communications Dashboard - Devtraco Plus' }
 
-const ALLOWED = ['admin', 'exco', 'senior_manager']
+const ALLOWED = ['admin', 'exco', 'senior_manager', 'senior', 'middle']
 
 function svc() {
   return createServiceClient(
@@ -49,10 +49,10 @@ export default async function CommunicationsDashboard() {
     <DashboardShell title="Communications Dashboard" description="Internal communication reach, staff engagement, and announcement tracking." lastUpdated={now}>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={Radio}         label="Workspace Documents"   value={String(docCount ?? 0)}   sub="All indexed files"            live color="text-blue-600 bg-blue-50" />
-        <StatCard icon={MessageSquare} label="AI Queries (7 days)"   value={String(convsWeek ?? 0)}  sub={`${convsTotal ?? 0} all-time`} live color="text-brand bg-brand-light" />
-        <StatCard icon={Mail}          label="Email Open Rate"       value="—"                       sub="Connect email tool to track"      color="text-indigo-600 bg-indigo-50" />
-        <StatCard icon={Users}         label="Staff Engaged"         value="—"                       sub="Connect comms tool to track"      color="text-green-600 bg-green-50" />
+        <StatCard icon={Radio}         label="Workspace Documents"  value={String(docCount ?? 0)}   sub="All indexed files"            live color="text-blue-600 bg-blue-50" />
+        <StatCard icon={MessageSquare} label="AI Queries (7 days)"  value={String(convsWeek ?? 0)}  sub={`${convsTotal ?? 0} all-time`} live color="text-brand bg-brand-light" />
+        <StatCard icon={Mail}          label="Email Open Rate"      value="N/A"                     sub="Connect email tool to track"      color="text-indigo-600 bg-indigo-50" />
+        <StatCard icon={Users}         label="Staff Engaged"        value="N/A"                     sub="Connect comms tool to track"      color="text-green-600 bg-green-50" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -69,7 +69,7 @@ export default async function CommunicationsDashboard() {
       <div className="grid gap-4 sm:grid-cols-3">
         <PlaceholderCard label="Communication Campaign Performance" />
         <PlaceholderCard label="Internal Announcements Tracker" />
-        <PlaceholderCard label="Feedback & Survey Responses" />
+        <PlaceholderCard label="Feedback and Survey Responses" />
       </div>
     </DashboardShell>
   )

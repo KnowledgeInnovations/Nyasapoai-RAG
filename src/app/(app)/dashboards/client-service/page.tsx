@@ -7,9 +7,9 @@ import { CATEGORIES } from '@/lib/documentCategories'
 import DashboardShell from '@/components/app/DashboardShell'
 import { StatCard, DocList, QueryList, PlaceholderCard } from '@/components/app/DashboardWidgets'
 
-export const metadata: Metadata = { title: 'Client Service Dashboard — Devtraco Plus' }
+export const metadata: Metadata = { title: 'Client Service Dashboard - Devtraco Plus' }
 
-const ALLOWED = ['admin', 'exco', 'senior_manager']
+const ALLOWED = ['admin', 'exco', 'senior_manager', 'senior', 'middle']
 
 function svc() {
   return createServiceClient(
@@ -49,10 +49,10 @@ export default async function ClientServiceDashboard() {
     <DashboardShell title="Client Service Dashboard" description="Onboarding status, follow-up activities, payments, and customer satisfaction." lastUpdated={now}>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={HeartHandshake} label="Legal & Client Docs"   value={String(legalCount ?? 0)} sub="Permits, deeds & compliance" live color="text-cyan-600 bg-cyan-50" />
+        <StatCard icon={HeartHandshake} label="Legal and Client Docs"  value={String(legalCount ?? 0)} sub="Permits, deeds and compliance" live color="text-cyan-600 bg-cyan-50" />
         <StatCard icon={MessageSquare}  label="AI Queries (7 days)"   value={String(convsWeek ?? 0)}  sub={`${convsTotal ?? 0} all-time`} live color="text-brand bg-brand-light" />
-        <StatCard icon={ClipboardList}  label="Open Client Requests"  value="—"                       sub="Connect CRM to track"             color="text-amber-600 bg-amber-50" />
-        <StatCard icon={Star}           label="Satisfaction Score"    value="—"                       sub="Connect survey tool to track"     color="text-purple-600 bg-purple-50" />
+        <StatCard icon={ClipboardList}  label="Open Client Requests"  value="N/A"                     sub="Connect CRM to track"             color="text-amber-600 bg-amber-50" />
+        <StatCard icon={Star}           label="Satisfaction Score"    value="N/A"                     sub="Connect survey tool to track"     color="text-purple-600 bg-purple-50" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -62,7 +62,7 @@ export default async function ClientServiceDashboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <DocList docs={legalDocs} cat={cat} title="Legal & Compliance Documents" emptyText="No legal documents yet" />
+        <DocList docs={legalDocs} cat={cat} title="Legal and Compliance Documents" emptyText="No legal documents yet" />
         <QueryList convs={recentConvs} />
       </div>
 

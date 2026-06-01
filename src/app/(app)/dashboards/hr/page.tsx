@@ -7,9 +7,9 @@ import { CATEGORIES } from '@/lib/documentCategories'
 import DashboardShell from '@/components/app/DashboardShell'
 import { StatCard, DocList, QueryList, PlaceholderCard } from '@/components/app/DashboardWidgets'
 
-export const metadata: Metadata = { title: 'HR Dashboard — Devtraco Plus' }
+export const metadata: Metadata = { title: 'HR Dashboard - Devtraco Plus' }
 
-const ALLOWED = ['admin', 'exco', 'senior_manager']
+const ALLOWED = ['admin', 'exco', 'senior_manager', 'senior', 'middle']
 
 function svc() {
   return createServiceClient(
@@ -51,8 +51,8 @@ export default async function HRDashboard() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Users}         label="Workspace Documents"  value={String(docCount ?? 0)}   sub="All indexed files"            live color="text-rose-600 bg-rose-50" />
         <StatCard icon={MessageSquare} label="AI Queries (30 days)" value={String(convsMonth ?? 0)} sub={`${convsTotal ?? 0} all-time`} live color="text-brand bg-brand-light" />
-        <StatCard icon={UserPlus}      label="Open Vacancies"       value="—"                       sub="Connect HRMS to track"            color="text-amber-600 bg-amber-50" />
-        <StatCard icon={Calendar}      label="Leave Requests"       value="—"                       sub="Connect HRMS to track"            color="text-purple-600 bg-purple-50" />
+        <StatCard icon={UserPlus}      label="Open Vacancies"       value="N/A"                     sub="Connect HRMS to track"            color="text-amber-600 bg-amber-50" />
+        <StatCard icon={Calendar}      label="Leave Requests"       value="N/A"                     sub="Connect HRMS to track"            color="text-purple-600 bg-purple-50" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -69,7 +69,7 @@ export default async function HRDashboard() {
       <div className="grid gap-4 sm:grid-cols-3">
         <PlaceholderCard label="KPI Tracking" />
         <PlaceholderCard label="Staff Turnover Trends" />
-        <PlaceholderCard label="Training & Development Records" />
+        <PlaceholderCard label="Training and Development Records" />
       </div>
     </DashboardShell>
   )

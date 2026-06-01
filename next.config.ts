@@ -4,6 +4,8 @@ import path from 'path'
 const nextConfig: NextConfig = {
   compress: true,
 
+  serverExternalPackages: ['officeparser', 'pdf-parse'],
+
   turbopack: {
     root: path.resolve(__dirname),
   },

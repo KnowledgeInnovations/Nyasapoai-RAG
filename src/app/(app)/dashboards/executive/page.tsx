@@ -1,9 +1,7 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import {
-  FileText, MessageSquare, AlertTriangle, TrendingUp, CheckCircle2, Crown,
-} from 'lucide-react'
+import { FileText, MessageSquare, AlertTriangle, TrendingUp, CheckCircle2, Crown } from 'lucide-react'
 import { getMembership, createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { CATEGORIES } from '@/lib/documentCategories'
@@ -11,9 +9,9 @@ import { cn } from '@/lib/utils'
 import DashboardShell from '@/components/app/DashboardShell'
 import { StatCard, QueryList, PlaceholderCard, DashEmpty } from '@/components/app/DashboardWidgets'
 
-export const metadata: Metadata = { title: 'Executive Dashboard — Devtraco Plus' }
+export const metadata: Metadata = { title: 'Executive Dashboard - Devtraco Plus' }
 
-const ALLOWED = ['admin', 'exco', 'senior_manager']
+const ALLOWED = ['admin', 'exco', 'senior_manager', 'senior', 'middle']
 
 function svc() {
   return createServiceClient(
@@ -65,19 +63,17 @@ export default async function ExecutiveDashboard() {
         <StatCard icon={FileText}      label="Documents Indexed"    value={String(docCount ?? 0)}   sub={`${chunkCount ?? 0} knowledge chunks`}  live color="text-indigo-600 bg-indigo-50" />
         <StatCard icon={MessageSquare} label="AI Queries (30 days)" value={String(convsMonth ?? 0)} sub={`${convsTotal ?? 0} all-time`}           live color="text-brand bg-brand-light" />
         <StatCard icon={AlertTriangle} label="Risks Flagged"        value={String(totalRisks)}      sub="Identified in AI answers"               live color="text-amber-600 bg-amber-50" />
-        <StatCard icon={TrendingUp}    label="Revenue (MTD)"        value="—"                       sub="Connect ERP to track"                        color="text-green-600 bg-green-50" />
+        <StatCard icon={TrendingUp}    label="Revenue (MTD)"        value="N/A"                     sub="Connect ERP to track"                        color="text-green-600 bg-green-50" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-
-        {/* Category breakdown */}
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
             <div>
               <h2 className="font-semibold text-gray-900">Documents by Department</h2>
               <p className="mt-0.5 text-xs text-gray-400">{docCount ?? 0} indexed across {catCounts.length} categories</p>
             </div>
-            <Link href="/documents" className="text-xs font-semibold text-brand hover:underline">Manage →</Link>
+            <Link href="/documents" className="text-xs font-semibold text-brand hover:underline">Manage &rarr;</Link>
           </div>
           {catCounts.length ? (
             <ul className="divide-y divide-gray-100 px-5">

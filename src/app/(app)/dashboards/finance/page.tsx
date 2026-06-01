@@ -7,9 +7,9 @@ import { CATEGORIES } from '@/lib/documentCategories'
 import DashboardShell from '@/components/app/DashboardShell'
 import { StatCard, DocList, QueryList, PlaceholderCard } from '@/components/app/DashboardWidgets'
 
-export const metadata: Metadata = { title: 'Finance Dashboard — Devtraco Plus' }
+export const metadata: Metadata = { title: 'Finance Dashboard - Devtraco Plus' }
 
-const ALLOWED = ['admin', 'exco', 'senior_manager']
+const ALLOWED = ['admin', 'exco', 'senior_manager', 'senior', 'middle']
 
 function svc() {
   return createServiceClient(
@@ -49,10 +49,10 @@ export default async function FinanceDashboard() {
     <DashboardShell title="Finance Dashboard" description="Revenue collection, outstanding payments, cash flow, and financial risk indicators." lastUpdated={now}>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={Banknote}      label="Finance Documents"     value={String(financeDocCount ?? 0)} sub="Invoices, budgets & schedules" live color="text-green-600 bg-green-50" />
-        <StatCard icon={MessageSquare} label="AI Queries (30 days)"  value={String(convsMonth ?? 0)}      sub={`${convsTotal ?? 0} all-time`}  live color="text-brand bg-brand-light" />
-        <StatCard icon={PiggyBank}     label="Revenue (MTD)"         value="—"                            sub="Connect ERP to track"               color="text-indigo-600 bg-indigo-50" />
-        <StatCard icon={TrendingDown}  label="Outstanding Payments"  value="—"                            sub="Connect accounting to track"        color="text-red-600 bg-red-50" />
+        <StatCard icon={Banknote}      label="Finance Documents"    value={String(financeDocCount ?? 0)} sub="Invoices, budgets and schedules" live color="text-green-600 bg-green-50" />
+        <StatCard icon={MessageSquare} label="AI Queries (30 days)" value={String(convsMonth ?? 0)}      sub={`${convsTotal ?? 0} all-time`}   live color="text-brand bg-brand-light" />
+        <StatCard icon={PiggyBank}     label="Revenue (MTD)"        value="N/A"                          sub="Connect ERP to track"                color="text-indigo-600 bg-indigo-50" />
+        <StatCard icon={TrendingDown}  label="Outstanding Payments" value="N/A"                          sub="Connect accounting to track"         color="text-red-600 bg-red-50" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
