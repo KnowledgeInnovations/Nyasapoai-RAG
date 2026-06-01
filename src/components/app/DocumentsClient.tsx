@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { FileText, Clock, CheckCircle2, XCircle, Lock, Pencil, Plus, Trash2 } from 'lucide-react'
 import type { Document } from '@/types'
@@ -29,6 +29,9 @@ const statusConfig = {
 
 export default function DocumentsClient({ initialDocuments, canUpload, canDelete, initialCategories }: Props) {
   const [documents, setDocuments]   = useState<Document[]>(initialDocuments)
+
+  // Sync with server data when router.refresh() completes
+  useEffect(() => { setDocuments(initialDocuments) }, [initialDocuments])
   const [categories, setCategories] = useState<Category[]>(
     () => initialCategories.map(c => buildCategory(c.value, c.label, c.description, c.iconName, c.colorName, c.dbId, c.isCustom))
   )
@@ -58,9 +61,13 @@ export default function DocumentsClient({ initialDocuments, canUpload, canDelete
     ? documents.filter(d => !d.department)
     : documents.filter(d => d.department === filter)
 
-  function handleUploaded() {
-    router.refresh()
-    // also re-fetch so new doc appears without full reload
+  function handleUploaded(newDocs: Document[]) {
+    // Optimistic update — show new docs immediately without waiting for refresh
+    setDocuments(prev => {
+      const existingIds = new Set(prev.map(d => d.id))
+      return [...newDocs.filter(d => !existingIds.has(d.id)), ...prev]
+    })
+    router.refresh() // sync with server in the background
   }
 
   async function handleDeleteConfirm() {
@@ -332,7 +339,7 @@ export default function DocumentsClient({ initialDocuments, canUpload, canDelete
         <UploadModal
           categories={categories}
           onClose={() => setShowUpload(false)}
-          onUploaded={() => { setShowUpload(false); handleUploaded() }}
+          onUploaded={docs => { setShowUpload(false); handleUploaded(docs) }}
         />
       )}
 

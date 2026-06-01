@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import path from 'path'
+type OfficeAst = { toText(): string }
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { parseOffice } = require('officeparser') as { parseOffice: (input: Buffer, opts: Record<string, unknown>) => Promise<unknown> }
+const { parseOffice } = require('officeparser') as { parseOffice: (input: Buffer, opts?: Record<string, unknown>) => Promise<OfficeAst> }
 
 const MAX_SIZE = 500 * 1024 * 1024 // 500 MB
 
@@ -49,11 +50,11 @@ async function extractText(buffer: Buffer, filename: string): Promise<string> {
     return (result.text as string) ?? ''
   }
 
-  // Office formats (DOCX, XLSX, PPTX, ODT, ODS, ODP, DOC, XLS, PPT)
+  // Office formats — officeparser v7 returns an AST; call .toText() to get plain text.
+  // Binary formats (docx/xlsx/pptx/odt/ods/odp) have magic bytes so no fileType needed.
   if (OFFICE_EXTS.has(ext)) {
-    const fileType = ext.slice(1) // '.docx' → 'docx'
-    const raw = await parseOffice(buffer, { fileType })
-    return Buffer.isBuffer(raw) ? raw.toString('utf-8') : String(raw ?? '')
+    const ast = await parseOffice(buffer)
+    return ast.toText()
   }
 
   // Plain text, CSV, JSON, XML, Markdown, and any other text-based format

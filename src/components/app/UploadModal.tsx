@@ -5,6 +5,7 @@ import { X, Upload, FileText, CheckCircle2, AlertCircle, Loader2, Paperclip } fr
 import { cn } from '@/lib/utils'
 import { SENSITIVITIES } from '@/lib/documentCategories'
 import type { Category } from '@/lib/documentCategories'
+import type { Document } from '@/types'
 
 interface FileItem {
   file: File
@@ -15,7 +16,7 @@ interface FileItem {
 
 interface Props {
   onClose:    () => void
-  onUploaded: () => void
+  onUploaded: (newDocs: Document[]) => void
   categories: Category[]
 }
 
@@ -66,7 +67,7 @@ export default function UploadModal({ onClose, onUploaded, categories }: Props) 
     if (!files.length || !category) return
     setUploading(true)
 
-    let anyDone = false
+    const newDocs: Document[] = []
 
     for (let i = 0; i < files.length; i++) {
       const item = files[i]
@@ -85,7 +86,7 @@ export default function UploadModal({ onClose, onUploaded, categories }: Props) 
         const data = await res.json()
         if (res.ok) {
           setFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'done' } : f))
-          anyDone = true
+          if (data.document) newDocs.push(data.document as Document)
         } else {
           setFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'error', error: data.error ?? 'Upload failed' } : f))
         }
@@ -95,7 +96,7 @@ export default function UploadModal({ onClose, onUploaded, categories }: Props) 
     }
 
     setUploading(false)
-    if (anyDone) onUploaded()
+    if (newDocs.length) onUploaded(newDocs)
   }
 
   const pendingCount = files.filter(f => f.status === 'pending').length
