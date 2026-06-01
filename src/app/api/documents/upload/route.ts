@@ -37,12 +37,10 @@ async function embedText(text: string): Promise<number[]> {
 async function extractText(buffer: Buffer, filename: string): Promise<string> {
   const ext = path.extname(filename).toLowerCase()
 
-  // PDF — use internal lib path to avoid pdf-parse's test-file side-effect at require time
+  // PDF — pdf-parse is in serverExternalPackages so Node loads it directly at runtime
   if (ext === '.pdf') {
-    /* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-explicit-any */
-    // @ts-ignore
-    const mod = await import('pdf-parse/lib/pdf-parse.js') as any
-    /* eslint-enable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-explicit-any */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mod = await import('pdf-parse') as any
     const pdfParse = mod.default ?? mod
     const parsed = await pdfParse(buffer)
     return parsed.text as string
