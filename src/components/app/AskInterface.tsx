@@ -2,11 +2,13 @@
 
 import { useState, useRef, useEffect } from 'react'
 import {
-  Send, FileText, MessageSquare, Sparkles, BookOpen,
+  Send, MessageSquare, Sparkles,
   AlertTriangle, CheckCircle2, Paperclip,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { RAGResponse } from '@/types'
+import type { RAGResponse, Citation } from '@/types'
+import MessageContent from './MessageContent'
+import SourceViewer from './SourceViewer'
 
 /* ── Types ────────────────────────────────────────────────── */
 interface Message {
@@ -33,14 +35,6 @@ function getInitials(name: string) {
     : name.slice(0, 2).toUpperCase()
 }
 
-function cleanStreamText(text: string) {
-  return text
-    .replace(/^\s*\[ANSWER\]\s*\n?/, '')
-    .split('\n[RISKS]')[0]
-    .split('\n[RECS]')[0]
-    .trim()
-}
-
 /* ── Shimmer skeleton ────────────────────────────────────── */
 function ThinkingSkeleton() {
   return (
@@ -65,7 +59,15 @@ function ThinkingSkeleton() {
 }
 
 /* ── Message bubble ──────────────────────────────────────── */
-function MessageBubble({ msg, initials }: { msg: Message; initials: string }) {
+function MessageBubble({
+  msg, initials, onCiteClick,
+}: {
+  msg: Message
+  initials: string
+  onCiteClick: (c: Citation) => void
+}) {
+  const citations = msg.response?.citations ?? []
+
   return (
     <div className={cn('flex gap-4', msg.role === 'user' && 'flex-row-reverse')}>
       <div className={cn(
@@ -74,34 +76,32 @@ function MessageBubble({ msg, initials }: { msg: Message; initials: string }) {
       )}>
         {msg.role === 'user' ? initials : 'DP'}
       </div>
+
       <div className="max-w-xl space-y-3">
+        {/* Bubble */}
         <div className={cn(
-          'rounded-2xl px-5 py-4 text-sm leading-relaxed whitespace-pre-line',
+          'rounded-2xl px-5 py-4',
           msg.role === 'user'
-            ? 'rounded-tr-sm bg-brand text-white'
-            : 'rounded-tl-sm border border-gray-200 bg-white text-gray-800 shadow-sm',
+            ? 'rounded-tr-sm bg-brand text-white text-sm leading-relaxed'
+            : 'rounded-tl-sm border border-gray-200 bg-white shadow-sm',
         )}>
-          {msg.role === 'ai' ? cleanStreamText(msg.text) : msg.text}
-          {msg.streaming && (
-            <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse rounded-full bg-gray-400 align-middle" />
+          {msg.role === 'user' ? (
+            <span className="text-sm leading-relaxed">{msg.text}</span>
+          ) : (
+            <>
+              <MessageContent
+                text={msg.text}
+                citations={citations}
+                onCiteClick={onCiteClick}
+              />
+              {msg.streaming && (
+                <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse rounded-full bg-gray-400 align-middle" />
+              )}
+            </>
           )}
         </div>
 
-        {msg.response?.citations && msg.response.citations.length > 0 && (
-          <div>
-            <p className="mb-2 flex items-center gap-1 text-xs font-semibold text-gray-400">
-              <BookOpen className="h-3 w-3" /> Sources
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {msg.response.citations.map((c, ci) => (
-                <span key={ci} className="inline-flex items-center gap-1.5 rounded-lg border border-brand/20 bg-brand-light px-2.5 py-1 text-xs font-medium text-brand">
-                  <FileText className="h-3 w-3" />{c.document_title}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
+        {/* Risks */}
         {msg.response?.risks && msg.response.risks.length > 0 && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5">
             <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-amber-800">
@@ -113,6 +113,7 @@ function MessageBubble({ msg, initials }: { msg: Message; initials: string }) {
           </div>
         )}
 
+        {/* Recommendations */}
         {msg.response?.recommendations && msg.response.recommendations.length > 0 && (
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3.5">
             <p className="mb-2 flex items-center gap-1.5 text-xs font-bold text-emerald-800">
@@ -142,12 +143,9 @@ function WelcomeScreen({ greeting, firstName, onSuggest }: {
   return (
     <div className="flex min-h-full flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-2xl">
-        <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-navy shadow-xl shadow-navy/30">
-          <span className="text-base font-black text-gold">DP</span>
-        </div>
         <h2 className="text-3xl font-extrabold text-gray-900">{greeting}, {firstName} 👋</h2>
         <p className="mt-2 text-base text-gray-500">
-          I'm here to help you find answers across all your Devtraco documents. What would you like to know today?
+          I&apos;m here to help you find answers across all your Devtraco documents. What would you like to know today?
         </p>
         <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {SUGGESTIONS.map(s => (
@@ -174,10 +172,15 @@ function WelcomeScreen({ greeting, firstName, onSuggest }: {
 
 /* ── Main component ──────────────────────────────────────── */
 export default function AskInterface({ userName = 'there' }: { userName?: string }) {
-  const [messages,  setMessages]  = useState<Message[]>([])
-  const [input,     setInput]     = useState('')
-  const [loading,   setLoading]   = useState(false)
-  const [uploading, setUploading] = useState(false)
+  const [messages,      setMessages]      = useState<Message[]>([])
+  const [input,         setInput]         = useState('')
+  const [loading,       setLoading]       = useState(false)
+  const [uploading,     setUploading]     = useState(false)
+  // Tracks the convId of the first message in the current session.
+  // null = new session (next message will create a sidebar entry).
+  // set  = active session (subsequent messages won't add new sidebar entries).
+  const [sessionConvId, setSessionConvId] = useState<string | null>(null)
+  const [activeSource,  setActiveSource]  = useState<Citation | null>(null)
 
   const bottomRef    = useRef<HTMLDivElement>(null)
   const textareaRef  = useRef<HTMLTextAreaElement>(null)
@@ -185,8 +188,14 @@ export default function AskInterface({ userName = 'there' }: { userName?: string
 
   const initials  = getInitials(userName)
   const firstName = userName.split(/\s+/)[0]
-  const hour      = new Date().getHours()
-  const greeting  = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+
+  // Computed client-side only to avoid SSR/client hydration mismatch
+  const [greeting, setGreeting] = useState('Hello')
+  useEffect(() => {
+    const h = new Date().getHours()
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setGreeting(h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening')
+  }, [])
 
 
 
@@ -194,6 +203,7 @@ export default function AskInterface({ userName = 'there' }: { userName?: string
   useEffect(() => {
     const handler = () => {
       setMessages([])
+      setSessionConvId(null)   // reset session so next message creates a new sidebar entry
       setTimeout(() => textareaRef.current?.focus(), 50)
     }
     window.addEventListener('new-chat', handler)
@@ -204,6 +214,7 @@ export default function AskInterface({ userName = 'there' }: { userName?: string
   useEffect(() => {
     const handler = (e: Event) => {
       const item = (e as CustomEvent<HistoryItem>).detail
+      setSessionConvId(item.id)  // mark as existing session — don't create new sidebar entry
       setMessages([
         { role: 'user', text: item.query },
         {
@@ -269,10 +280,22 @@ export default function AskInterface({ userName = 'there' }: { userName?: string
     setMessages(prev => [...prev, { role: 'user', text: q }])
     setLoading(true)
     try {
+      const isNewSession = sessionConvId === null
+
+      // Full conversation history — the AI sees everything said in this session.
+      const history = messages
+        .filter(m => !m.streaming)
+        .map(m => ({
+          role:    m.role === 'user' ? 'user' : 'assistant',
+          content: m.role === 'ai' && m.response?.answer
+            ? m.response.answer   // use the clean final answer, not raw delimited text
+            : m.text,
+        }))
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: q }),
+        body: JSON.stringify({ query: q, newSession: isNewSession, history }),
       })
       if (!res.ok || !res.body) throw new Error('Request failed')
 
@@ -292,7 +315,7 @@ export default function AskInterface({ userName = 'there' }: { userName?: string
 
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
-          let event: { t?: string; done?: boolean; answer?: string; risks?: string[]; recommendations?: string[]; citations?: RAGResponse['citations']; confidence_score?: number }
+          let event: { t?: string; done?: boolean; answer?: string; risks?: string[]; recommendations?: string[]; citations?: RAGResponse['citations']; confidence_score?: number; convId?: string | null; title?: string }
           try { event = JSON.parse(line.slice(6)) } catch { continue }
 
           if (event.t) {
@@ -327,7 +350,12 @@ export default function AskInterface({ userName = 'there' }: { userName?: string
                 },
               },
             ])
-            window.dispatchEvent(new CustomEvent('refresh-chat-history'))
+            // Only update sidebar on the FIRST message of a session.
+            // Subsequent messages in the same chat don't add new sidebar entries.
+            if (isNewSession && event.convId) {
+              setSessionConvId(event.convId)
+              window.dispatchEvent(new CustomEvent('refresh-chat-history'))
+            }
           }
         }
       }
@@ -351,7 +379,7 @@ export default function AskInterface({ userName = 'there' }: { userName?: string
         ) : (
           <div className="mx-auto max-w-3xl space-y-8 px-6 py-8">
             {messages.map((msg, i) => (
-              <MessageBubble key={i} msg={msg} initials={initials} />
+              <MessageBubble key={i} msg={msg} initials={initials} onCiteClick={setActiveSource} />
             ))}
             {/* Show skeleton only before first token arrives (last msg is still from user) */}
             {loading && messages[messages.length - 1]?.role === 'user' && <ThinkingSkeleton />}
@@ -359,6 +387,9 @@ export default function AskInterface({ userName = 'there' }: { userName?: string
           </div>
         )}
       </div>
+
+      {/* Source viewer — slides in when a citation is clicked */}
+      <SourceViewer citation={activeSource} onClose={() => setActiveSource(null)} />
 
       {/* Input bar */}
       <div className="shrink-0 border-t border-gray-200 bg-white p-4">

@@ -9,7 +9,8 @@ import { CATEGORIES, getCategoryByValue } from '@/lib/documentCategories'
 import { cn } from '@/lib/utils'
 import dynamic from 'next/dynamic'
 
-const UploadModal = dynamic(() => import('./UploadModal'), { ssr: false })
+const UploadModal      = dynamic(() => import('./UploadModal'),      { ssr: false })
+const DocumentPreview  = dynamic(() => import('./DocumentPreview'),  { ssr: false })
 
 interface Props {
   initialDocuments: Document[]
@@ -23,9 +24,10 @@ const statusConfig = {
 }
 
 export default function DocumentsClient({ initialDocuments, canUpload }: Props) {
-  const [documents,   setDocuments]   = useState<Document[]>(initialDocuments)
-  const [filter,      setFilter]      = useState('all')
-  const [showUpload,  setShowUpload]  = useState(false)
+  const [documents]    = useState<Document[]>(initialDocuments)
+  const [filter,        setFilter]       = useState('all')
+  const [showUpload,    setShowUpload]   = useState(false)
+  const [previewDocId,  setPreviewDocId] = useState<string | null>(null)
   const router = useRouter()
 
   // Category counts
@@ -183,7 +185,16 @@ export default function DocumentsClient({ initialDocuments, canUpload }: Props) 
                 const s   = statusConfig[doc.status]
                 const cat = getCategoryByValue(doc.department)
                 return (
-                  <tr key={doc.id} className="hover:bg-gray-50/60 transition-colors">
+                  <tr
+                    key={doc.id}
+                    onClick={() => setPreviewDocId(doc.id)}
+                    className={cn(
+                      'cursor-pointer transition-colors',
+                      previewDocId === doc.id
+                        ? 'bg-brand-light'
+                        : 'hover:bg-gray-50/80'
+                    )}
+                  >
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
                         <div className={cn(
@@ -196,7 +207,7 @@ export default function DocumentsClient({ initialDocuments, canUpload }: Props) 
                           }
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate font-semibold text-gray-900 max-w-[200px]">{doc.title}</p>
+                          <p className={cn('truncate font-semibold max-w-[200px]', previewDocId === doc.id ? 'text-brand' : 'text-gray-900')}>{doc.title}</p>
                           <p className="truncate text-xs text-gray-400 max-w-[200px]">{doc.source}</p>
                         </div>
                       </div>
@@ -248,6 +259,12 @@ export default function DocumentsClient({ initialDocuments, canUpload }: Props) 
           onUploaded={() => { setShowUpload(false); handleUploaded() }}
         />
       )}
+
+      {/* ── Document preview panel ───────────────────────────── */}
+      <DocumentPreview
+        docId={previewDocId}
+        onClose={() => setPreviewDocId(null)}
+      />
     </div>
   )
 }

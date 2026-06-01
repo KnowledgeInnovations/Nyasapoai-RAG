@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   MessageSquare, FileText, BarChart3, Settings,
-  ChevronLeft, ChevronRight, X, Plus, History,
+  ChevronLeft, ChevronRight, X, Plus, History, Trash2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -32,12 +32,28 @@ interface Props {
   onToggle: () => void
 }
 
+// Generate a short readable title from the query
+function deriveTitle(query: string): string {
+  const q = query.trim().replace(/[?!.]+$/, '')
+  if (q.split(/\s+/).length <= 3) return q || 'Quick chat'
+  const words = q.split(/\s+/).slice(0, 6)
+  return words.join(' ') + (q.split(/\s+/).length > 6 ? '…' : '')
+}
+
 export default function AppSidebar({ collapsed, mobileOpen, onClose, onToggle }: Props) {
   const pathname = usePathname()
+  const router   = useRouter()
   const isAsk    = pathname.startsWith('/ask')
+
+  // Prefetch all nav routes immediately so link clicks feel instant
+  useEffect(() => {
+    navItems.forEach(({ href }) => router.prefetch(href))
+  }, [router])
 
   const [history,      setHistory]      = useState<HistoryItem[]>([])
   const [activeConvId, setActiveConvId] = useState<string | null>(null)
+  const [deletingId,   setDeletingId]   = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null)
 
   const fetchHistory = useCallback(() => {
     fetch('/api/chat')
@@ -49,6 +65,7 @@ export default function AppSidebar({ collapsed, mobileOpen, onClose, onToggle }:
   // Load history when on ask route
   useEffect(() => {
     if (isAsk) fetchHistory()
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     else setHistory([])
   }, [isAsk, fetchHistory])
 
@@ -88,9 +105,42 @@ export default function AppSidebar({ collapsed, mobileOpen, onClose, onToggle }:
     onClose()
   }
 
-  // Group history by date
-  const today     = new Date().toDateString()
-  const yesterday = new Date(Date.now() - 86_400_000).toDateString()
+  function confirmDelete(e: React.MouseEvent, item: HistoryItem) {
+    e.stopPropagation()
+    setDeleteTarget({ id: item.id, title: deriveTitle(item.query) })
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return
+    const { id } = deleteTarget
+    setDeletingId(id)
+    setDeleteTarget(null)
+    try {
+      const res  = await fetch(`/api/chat?id=${id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) {
+        console.error('Delete failed:', data.error)
+        return
+      }
+      setHistory(prev => prev.filter(h => h.id !== id))
+      if (activeConvId === id) {
+        setActiveConvId(null)
+        window.dispatchEvent(new CustomEvent('new-chat'))
+      }
+    } catch (e) {
+      console.error('Delete request error:', e)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  // Group history by date — memoised so Date.now() isn't called on every render
+  const { today, yesterday } = useMemo(() => {
+    const now  = new Date()
+    const prev = new Date(now)
+    prev.setDate(prev.getDate() - 1)
+    return { today: now.toDateString(), yesterday: prev.toDateString() }
+  }, [])
   const groups: { label: string; items: HistoryItem[] }[] = []
   const todays    = history.filter(i => new Date(i.created_at).toDateString() === today)
   const yesterdays = history.filter(i => new Date(i.created_at).toDateString() === yesterday)
@@ -181,15 +231,33 @@ export default function AppSidebar({ collapsed, mobileOpen, onClose, onToggle }:
                     {group.label}
                   </p>
                   {group.items.map(item => (
-                    <button key={item.id} onClick={() => handleOpenConversation(item)}
+                    <div key={item.id}
                       className={cn(
-                        'w-full rounded-xl px-3 py-2 text-left text-xs transition',
+                        'group relative flex items-center rounded-xl transition',
                         activeConvId === item.id
-                          ? 'bg-white/15 text-white font-medium'
-                          : 'text-white/40 hover:bg-white/8 hover:text-white/70'
+                          ? 'bg-white/15'
+                          : 'hover:bg-white/8'
                       )}>
-                      <p className="truncate leading-relaxed">{item.query}</p>
-                    </button>
+                      <button
+                        onClick={() => handleOpenConversation(item)}
+                        className="min-w-0 flex-1 px-3 py-2 text-left text-xs"
+                      >
+                        <p className={cn(
+                          'truncate leading-relaxed pr-5',
+                          activeConvId === item.id ? 'text-white font-medium' : 'text-white/40 group-hover:text-white/70'
+                        )}>
+                          {deriveTitle(item.query)}
+                        </p>
+                      </button>
+                      <button
+                        onClick={e => confirmDelete(e, item)}
+                        disabled={deletingId === item.id}
+                        title="Delete chat"
+                        className="absolute right-2 hidden group-hover:flex h-5 w-5 shrink-0 items-center justify-center rounded text-white/30 hover:text-red-400 transition disabled:opacity-40"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               ))}
@@ -230,6 +298,35 @@ export default function AppSidebar({ collapsed, mobileOpen, onClose, onToggle }:
       )}>
         {inner}
       </div>
+
+      {/* ── Delete confirmation modal ─────────────────────── */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#0f1629] p-6 shadow-2xl shadow-black/50">
+            <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/15 border border-red-500/25">
+              <Trash2 className="h-5 w-5 text-red-400" />
+            </div>
+            <h3 className="mt-4 text-base font-bold text-white">Delete this chat?</h3>
+            <p className="mt-1.5 text-sm text-white/45 leading-relaxed">
+              <span className="font-medium text-white/70">&quot;{deleteTarget.title}&quot;</span> will be permanently removed and cannot be recovered.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 rounded-xl border border-white/15 py-2.5 text-sm font-semibold text-white/60 transition hover:bg-white/8 hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 rounded-xl bg-red-500 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-500/25 transition hover:bg-red-600"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

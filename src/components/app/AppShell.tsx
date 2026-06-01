@@ -18,6 +18,7 @@ export default function AppShell({ user, children }: Props) {
   useEffect(() => {
     try {
       const saved = localStorage.getItem('sidebar-collapsed')
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (saved === 'true') setCollapsed(true)
     } catch {}
   }, [])

@@ -24,6 +24,7 @@ export default function MarketingNav() {
     return () => window.removeEventListener('scroll', handle)
   }, [])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setOpen(false) }, [pathname])
 
   useEffect(() => {

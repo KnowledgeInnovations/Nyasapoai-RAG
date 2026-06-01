@@ -5,8 +5,9 @@ export const dynamic = 'force-dynamic'
 import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, ArrowRight, CheckCircle2, Loader2, Mail } from 'lucide-react'
+
 
 const FEATURES = [
   'Ask anything across all your project files and contracts',
@@ -16,7 +17,6 @@ const FEATURES = [
 
 function LoginForm() {
   const router = useRouter()
-  const searchParams = useSearchParams()
 
   const [email, setEmail]           = useState('')
   const [password, setPassword]     = useState('')
@@ -28,7 +28,7 @@ function LoginForm() {
 
   const supabase = createClient()
 
-  async function handlePassword(e: React.FormEvent) {
+  async function handlePassword(e: React.SyntheticEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
@@ -38,7 +38,7 @@ function LoginForm() {
     setLoading(false)
   }
 
-  async function handleMagic(e: React.FormEvent) {
+  async function handleMagic(e: React.SyntheticEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
@@ -151,7 +151,7 @@ function LoginForm() {
             />
           </div>
           <p className="text-xs text-gray-500">
-            We'll send a secure sign-in link to your inbox. No password needed.
+            We&apos;ll send a secure sign-in link to your inbox. No password needed.
           </p>
           <button type="submit" disabled={loading}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-navy py-3.5 text-sm font-bold text-white shadow-lg shadow-navy/20 transition hover:bg-navy-mid disabled:opacity-60">

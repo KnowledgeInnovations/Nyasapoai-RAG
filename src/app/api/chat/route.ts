@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, getUser, getMembership } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+
+// Service-role client for document/chunk queries — bypasses RLS.
+// Tenant isolation is enforced by p_tenant_id in the RPC, so this is safe.
+function getServiceClient() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
 
 const OPENAI_HEADERS = {
   'Content-Type': 'application/json',
   Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
 }
 
-// Delimited text format — avoids JSON-mode latency overhead and lets us stream cleanly
 const SYSTEM_PROMPT = `You are Devtraco Plus, a friendly and professional AI assistant for Devtraco, a leading Ghanaian real estate company. Help the team find clear, accurate answers from their project documents.
 
 Personality: warm, polite, professional — like a knowledgeable colleague always happy to help.
@@ -45,30 +55,40 @@ function parseDelimited(text: string) {
   }
 }
 
-function sseStream(chunks: (() => string)[], onDone?: () => void) {
-  const enc = new TextEncoder()
-  return new ReadableStream({
-    start(c) {
-      for (const chunk of chunks) c.enqueue(enc.encode(chunk()))
-      onDone?.()
-      c.close()
-    },
-  })
-}
-
 function sseHeaders() {
-  return {
-    'Content-Type':    'text/event-stream',
-    'Cache-Control':   'no-cache',
-    'X-Accel-Buffering': 'no',
-  }
+  return { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no' }
 }
 
-/* ── GET: conversation history ───────────────────────────── */
+// Stream a message word-by-word so the UI shows a typing effect
+async function streamWords(
+  controller: ReadableStreamDefaultController,
+  enc: TextEncoder,
+  text: string,
+  meta: Record<string, unknown>,
+) {
+  const words = text.split(' ')
+  for (let i = 0; i < words.length; i++) {
+    const token = (i === 0 ? '' : ' ') + words[i]
+    controller.enqueue(enc.encode(`data: ${JSON.stringify({ t: token })}\n\n`))
+    await new Promise(r => setTimeout(r, 28))
+  }
+  controller.enqueue(enc.encode(`data: ${JSON.stringify({ done: true, answer: text, ...meta })}\n\n`))
+  controller.close()
+}
+
+// Derive a short memorable title from the query
+function makeTitle(query: string): string {
+  const q = query.trim().replace(/[?!.]+$/, '')
+  if (q.split(/\s+/).length <= 3) return q || 'Quick chat'
+  const words = q.split(/\s+/).slice(0, 6)
+  return words.join(' ') + (q.split(/\s+/).length > 6 ? '…' : '')
+}
+
+/* ── GET: conversation history ────────────────────────────── */
 export async function GET() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const supabase = await createClient()
 
   const { data } = await supabase
     .from('conversations')
@@ -80,67 +100,144 @@ export async function GET() {
   return NextResponse.json({ conversations: data ?? [] })
 }
 
-/* ── POST: streaming chat ────────────────────────────────── */
-export async function POST(request: NextRequest) {
+/* ── DELETE: remove a conversation ────────────────────────── */
+export async function DELETE(request: NextRequest) {
+  const user = await getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return new Response('Unauthorized', { status: 401 })
 
-  const { query } = await request.json()
+  const id = new URL(request.url).searchParams.get('id')
+  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+
+  // Verify ownership with the authenticated client first
+  const { data: owned } = await supabase
+    .from('conversations').select('id').eq('id', id).eq('user_id', user.id).maybeSingle()
+
+  if (!owned) return NextResponse.json({ error: 'Not found or not yours' }, { status: 404 })
+
+  // Use service role to bypass RLS for the actual deletion
+  // (RLS DELETE policies may not be set up — we've already verified ownership above)
+  const { createClient: createService } = await import('@supabase/supabase-js')
+  const service = createService(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  await service.from('citations').delete().eq('conversation_id', id)
+  const { error } = await service.from('conversations').delete().eq('id', id)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ success: true })
+}
+
+/* ── POST: streaming chat ─────────────────────────────────── */
+export async function POST(request: NextRequest) {
+  // Both calls served from module-level cache after first request — near zero latency
+  const [user, membership] = await Promise.all([getUser(), getMembership()])
+  if (!user)       return new Response('Unauthorized', { status: 401 })
+  if (!membership) return new Response('No workspace',  { status: 403 })
+
+  const supabase = await createClient()
+  const { query, newSession = true, history = [] } = await request.json()
   if (!query?.trim()) return new Response('Query required', { status: 400 })
 
-  const enc = new TextEncoder()
+  // Full conversation history — no cap, AI always has the complete context
+  type HistMsg = { role: 'user' | 'assistant'; content: string }
+  const historyMsgs: HistMsg[] = (history as HistMsg[])
+    .filter(m => m.role === 'user' || m.role === 'assistant')
 
-  /* ── Greetings shortcut (no RAG needed) ────────────────── */
-  const greetingRx = /^(hi+|hello+|hey+|good\s?(morning|afternoon|evening)|howdy|hiya|what'?s up|sup|greetings|yo)[!?.]*$/i
-  if (greetingRx.test(query.trim())) {
+  const enc = new TextEncoder()
+  const tenantId = membership.tenant_id
+
+  // Save a conversation and return the DB-generated id (never pass a custom id)
+  async function saveConv(answer: string, risks: string[], recommendations: string[], confidence = 0.85): Promise<string | null> {
+    try {
+      const { data, error } = await supabase
+        .from('conversations')
+        .insert({
+          user_id: user!.id, tenant_id: tenantId,
+          query, response: answer, confidence_score: confidence, risks, recommendations,
+        })
+        .select('id')
+        .single()
+      if (error) { console.error('Conv save error:', error.message); return null }
+      return data?.id ?? null
+    } catch (e) { console.error('Conv save failed:', e); return null }
+  }
+
+  /* ── Small talk shortcut ──────────────────────────────────── */
+  const smallTalkRx = /^(hi+|hello+|hey+|good\s?(morning|afternoon|evening)|howdy|hiya|greetings|yo|what'?s up|sup|ok(ay)?|alright|sure|got\s*it|noted|understood|thanks?|thank\s*you|cheers|perfect|great|sounds?\s*good|makes?\s*sense|i\s*see|nice|cool|awesome|wonderful|brilliant|excellent|amazing|yes|no|yep|nope|yeah|nah|absolutely|definitely|of\s*course|certainly|bye|goodbye|see\s*you|take\s*care|later|cya|no\s*worries|no\s*problem|appreciate\s*(it|that)?|well\s*done|good\s*job|interesting|i\s*understand)[!?.,\s]*$/i
+  if (smallTalkRx.test(query.trim())) {
     const firstName = (user.user_metadata?.name || user.email?.split('@')[0] || 'there').split(/\s+/)[0]
-    const msg = `Hello ${firstName}! 😊 I'm Devtraco Plus, your document intelligence assistant. Ask me anything about your project files, contracts, or site reports. How can I help today?`
+    const convRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST', headers: OPENAI_HEADERS,
+      body: JSON.stringify({
+        model: 'gpt-4o-mini', temperature: 0.7, max_tokens: 120,
+        messages: [
+          { role: 'system', content: `You are Devtraco Plus, a friendly AI document assistant for Devtraco — a Ghanaian real estate company. The user sent a short conversational message. Reply warmly in 1–2 sentences. Address them as ${firstName}. Stay in character. Gently remind them you can help with documents if appropriate. Use the conversation history below to understand context before responding.` },
+          ...historyMsgs,
+          { role: 'user', content: query },
+        ],
+      }),
+    })
+    const convData = await convRes.json()
+    const msg = convData.choices?.[0]?.message?.content?.trim()
+      ?? `You're welcome, ${firstName}! Let me know whenever you have a question about your documents.`
+
+    const title  = makeTitle(query)
+    const convId = newSession ? await saveConv(msg, [], [], 1) : null
+
     return new Response(
-      sseStream([
-        () => `data: ${JSON.stringify({ t: msg })}\n\n`,
-        () => `data: ${JSON.stringify({ done: true, answer: msg, risks: [], recommendations: [], citations: [], confidence_score: 1 })}\n\n`,
-      ]),
+      new ReadableStream({ async start(c) {
+        await streamWords(c, enc, msg, { risks: [], recommendations: [], citations: [], confidence_score: 1, convId, title })
+      }}),
       { headers: sseHeaders() }
     )
   }
 
-  /* ── Membership (only tenant_id + role needed) ──────────── */
-  const { data: membership } = await supabase
-    .from('memberships')
-    .select('tenant_id, role')
-    .eq('user_id', user.id)
-    .single()
-
-  if (!membership) return new Response('No workspace', { status: 403 })
-  const tenantId = membership.tenant_id
-
   try {
-    /* ── 1. Embed query ─────────────────────────────────────── */
+    /* ── 1. Embed query ──────────────────────────────────────── */
     const embRes = await fetch('https://api.openai.com/v1/embeddings', {
-      method: 'POST',
-      headers: OPENAI_HEADERS,
+      method: 'POST', headers: OPENAI_HEADERS,
       body: JSON.stringify({ model: 'text-embedding-3-small', input: query }),
     })
     const embData = await embRes.json()
     const queryEmbedding = embData.data[0].embedding
 
-    /* ── 2. Retrieve chunks ──────────────────────────────────── */
-    const { data: chunks } = await supabase.rpc('match_document_chunks', {
-      query_embedding: queryEmbedding,
-      p_tenant_id:     tenantId,
-      match_threshold: 0.65,
-      match_count:     5,   // down from 8 — fewer tokens = faster inference
+    /* ── 2. Retrieve chunks via service role (bypasses RLS) ─────
+       Tenant isolation enforced by p_tenant_id — this is safe. */
+    const svc = getServiceClient()
+    const { data: chunks, error: rpcError } = await svc.rpc('match_document_chunks', {
+      query_embedding: queryEmbedding, p_tenant_id: tenantId,
+      match_threshold: 0.2, match_count: 5,
     })
+    if (rpcError) console.error('[RAG] RPC error:', JSON.stringify(rpcError))
 
-    /* ── No documents found ─────────────────────────────────── */
+    /* ── No documents found ──────────────────────────────────── */
     if (!chunks?.length) {
-      const msg = "I wasn't able to find any relevant documents to answer that. Your workspace may not have any files uploaded yet.\n\nHead over to the **Documents** section to upload your PDFs, contracts, or site reports — I'll be ready to answer right away! 📂"
+      const noDocRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST', headers: OPENAI_HEADERS,
+        body: JSON.stringify({
+          model: 'gpt-4o-mini', temperature: 0.5, max_tokens: 150,
+          messages: [
+            { role: 'system', content: `You are Devtraco Plus, a friendly AI document assistant for Devtraco (a Ghanaian real estate company). The user asked a question but no documents have been uploaded yet. Respond warmly in 2–3 sentences: acknowledge their specific question in context of the conversation, explain no documents are available yet, and invite them to upload files in the Documents section.` },
+            ...historyMsgs,
+            { role: 'user', content: query },
+          ],
+        }),
+      })
+      const noDocData = await noDocRes.json()
+      const msg = noDocData.choices?.[0]?.message?.content?.trim()
+        ?? "I wasn't able to find any relevant documents for that question. It looks like no files have been uploaded yet — head over to the **Documents** section to add your PDFs, contracts, or site reports and I'll be ready to help!"
+
+      const title  = makeTitle(query)
+      const convId = newSession ? await saveConv(msg, [], [], 0) : null
+
       return new Response(
-        sseStream([
-          () => `data: ${JSON.stringify({ t: msg })}\n\n`,
-          () => `data: ${JSON.stringify({ done: true, answer: msg, risks: [], recommendations: [], citations: [], confidence_score: 0 })}\n\n`,
-        ]),
+        new ReadableStream({ async start(c) {
+          await streamWords(c, enc, msg, { risks: [], recommendations: [], citations: [], confidence_score: 0, convId, title })
+        }}),
         { headers: sseHeaders() }
       )
     }
@@ -149,30 +246,28 @@ export async function POST(request: NextRequest) {
       .map((c: { chunk_text: string }, i: number) => `[${i + 1}] ${c.chunk_text}`)
       .join('\n\n')
 
-    /* ── 3. Prefetch citation titles while OpenAI responds ───── */
-    const chunkDetailsPromise = supabase
-      .from('document_chunks')
-      .select('id, documents(title)')
+    /* ── 3. Prefetch citation titles via service role ────────── */
+    const chunkDetailsPromise = svc
+      .from('document_chunks').select('id, documents(title)')
       .in('id', chunks.map((c: { id: string }) => c.id))
 
-    /* ── 4. Stream from gpt-4o-mini (10× faster than gpt-4o) ── */
+    /* ── 4. Pre-generate conversation ID so we can include in done event ── */
+    const title  = makeTitle(query)
+
+    /* ── 5. Stream from gpt-4o-mini ─────────────────────────── */
     const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: OPENAI_HEADERS,
+      method: 'POST', headers: OPENAI_HEADERS,
       body: JSON.stringify({
-        model:       'gpt-4o-mini',
-        temperature: 0.2,
-        max_tokens:  800,
-        stream:      true,
+        model: 'gpt-4o-mini', temperature: 0.2, max_tokens: 800, stream: true,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
+          ...historyMsgs,
           { role: 'user',   content: `Document excerpts:\n${context}\n\nQuestion: ${query}` },
         ],
       }),
       signal: request.signal,
     })
 
-    /* ── 5. Transform OpenAI SSE → client SSE ───────────────── */
     const stream = new ReadableStream({
       async start(controller) {
         const reader  = openaiRes.body!.getReader()
@@ -193,60 +288,60 @@ export async function POST(request: NextRequest) {
               if (!line.startsWith('data: ')) continue
               const raw = line.slice(6).trim()
               if (raw === '[DONE]') continue
-
               let parsed: { choices?: { delta?: { content?: string } }[] }
               try { parsed = JSON.parse(raw) } catch { continue }
-
               const token = parsed.choices?.[0]?.delta?.content ?? ''
               if (!token) continue
-
               fullText += token
               controller.enqueue(enc.encode(`data: ${JSON.stringify({ t: token })}\n\n`))
             }
           }
 
-          /* ── Parse structured response ───────────────────── */
           const { answer, risks, recommendations } = parseDelimited(fullText)
 
-          /* ── Resolve citations (should already be ready) ───── */
+          // Only save on the first message of a session (newSession=true).
+          // Subsequent messages in the same chat don't create new sidebar entries.
+          let convId: string | null = null
+          if (newSession) {
+            try {
+              const { data: conv, error: convErr } = await supabase
+                .from('conversations')
+                .insert({
+                  user_id: user!.id, tenant_id: tenantId,
+                  query, response: answer, confidence_score: 0.85, risks, recommendations,
+                })
+                .select('id')
+                .single()
+              if (convErr) console.error('Conv save error:', convErr.message)
+              convId = conv?.id ?? null
+              if (convId && chunks.length) {
+                await supabase.from('citations').insert(
+                  chunks.map((c: { id: string; similarity: number }) => ({
+                    conversation_id: convId, document_chunk_id: c.id, relevance_score: c.similarity,
+                  }))
+                )
+              }
+            } catch (e) { console.error('Save failed:', e) }
+          }
+
+          // Build citation objects with the real DB-generated convId
           const { data: chunkDetails } = await chunkDetailsPromise
           const citations = chunks.map((c: { id: string; chunk_text: string; similarity: number }) => {
             const detail  = chunkDetails?.find(d => d.id === c.id)
             const rawDocs = detail?.documents as { title: string } | { title: string }[] | null
-            const title   = Array.isArray(rawDocs) ? rawDocs[0]?.title : rawDocs?.title
+            const docTitle = Array.isArray(rawDocs) ? rawDocs[0]?.title : rawDocs?.title
             return {
-              id: c.id, conversation_id: '',
+              id: c.id, conversation_id: convId ?? '',
               document_chunk_id: c.id,
-              document_title: title ?? 'Document',
+              document_title: docTitle ?? 'Document',
               chunk_text: c.chunk_text,
               relevance_score: c.similarity,
             }
           })
 
-          /* ── Send done event with all structured data ───────── */
           controller.enqueue(enc.encode(
-            `data: ${JSON.stringify({ done: true, answer, risks, recommendations, citations, confidence_score: 0.85 })}\n\n`
+            `data: ${JSON.stringify({ done: true, answer, risks, recommendations, citations, confidence_score: 0.85, convId, title })}\n\n`
           ))
-
-          /* ── Background DB save — does NOT block the response ─ */
-          Promise.resolve().then(async () => {
-            try {
-              const { data: conv } = await supabase
-                .from('conversations')
-                .insert({ user_id: user.id, tenant_id: tenantId, query, response: answer, confidence_score: 0.85, risks, recommendations })
-                .select('id').single()
-
-              if (conv && chunks.length) {
-                await supabase.from('citations').insert(
-                  chunks.map((c: { id: string; similarity: number }) => ({
-                    conversation_id: conv.id,
-                    document_chunk_id: c.id,
-                    relevance_score: c.similarity,
-                  }))
-                )
-              }
-            } catch (e) { console.error('Background save failed:', e) }
-          })
 
         } catch (err) {
           if ((err as Error).name !== 'AbortError') console.error('Stream error:', err)

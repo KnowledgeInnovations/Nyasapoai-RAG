@@ -1,11 +1,15 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   Building2, FileText, MessageSquare, ShieldCheck,
   Zap, BookOpen, ArrowRight, CheckCircle2,
 } from 'lucide-react'
 import DemoChat from '@/components/marketing/DemoChat'
 import FAQ from '@/components/marketing/FAQ'
+
+// Statically generated — revalidated every 24 hours
+export const revalidate = 86400
 
 export const metadata: Metadata = {
   title: 'Devtraco Plus — Intelligent Document Workspace',
@@ -127,13 +131,14 @@ export default function HomePage() {
 
               <div className="relative w-full overflow-hidden rounded-3xl border border-white/10 shadow-2xl shadow-black/50"
                 style={{ height: 520 }}>
-                {/* Arlo Cantonments — replace with local file: public/images/devtraco-building.jpg */}
-                <div
-                  className="absolute inset-0 bg-cover bg-center transition-transform duration-700 hover:scale-105"
-                  style={{
-                    backgroundImage: "url('https://propartners.com.gh/wp-content/uploads/2025/06/image-4-1024x652.png')",
-                    backgroundColor: '#0f1629',
-                  }}
+                {/* Arlo Cantonments — next/image gives automatic WebP + lazy-load */}
+                <Image
+                  src="https://propartners.com.gh/wp-content/uploads/2025/06/image-4-1024x652.png"
+                  alt="Arlo Cantonments — 18-floor luxury residences by Devtraco Plus"
+                  fill
+                  className="object-cover object-center transition-transform duration-700 hover:scale-105"
+                  sizes="(max-width: 1024px) 0vw, 50vw"
+                  priority={false}
                 />
                 {/* Bottom-fade overlay for contrast (sits above photo, below UI) */}
                 <div className="absolute inset-0 bg-gradient-to-t from-navy/85 via-navy/10 to-transparent" />
