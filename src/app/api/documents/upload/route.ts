@@ -37,11 +37,17 @@ async function embedText(text: string): Promise<number[]> {
 async function extractText(buffer: Buffer, filename: string): Promise<string> {
   const ext = path.extname(filename).toLowerCase()
 
-  // PDF — pdf-parse is in serverExternalPackages so Node loads it directly at runtime
+  // PDF
   if (ext === '.pdf') {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mod = await import('pdf-parse') as any
-    const pdfParse = mod.default ?? mod
+    // Handle all CJS→ESM interop wrapping patterns (single or double default)
+    const pdfParse =
+      typeof mod === 'function'                  ? mod             :
+      typeof mod.default === 'function'          ? mod.default     :
+      typeof mod.default?.default === 'function' ? mod.default.default :
+      null
+    if (!pdfParse) throw new Error('pdf-parse did not export a callable function')
     const parsed = await pdfParse(buffer)
     return parsed.text as string
   }
@@ -51,7 +57,9 @@ async function extractText(buffer: Buffer, filename: string): Promise<string> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { parseOffice } = await import('officeparser') as any
     const fileType = ext.slice(1) // '.docx' → 'docx'
-    return (await parseOffice(buffer, { fileType })) as string
+    const raw = await parseOffice(buffer, { fileType })
+    // parseOffice may return a Buffer or string depending on version
+    return Buffer.isBuffer(raw) ? raw.toString('utf-8') : String(raw ?? '')
   }
 
   // Plain text, CSV, JSON, XML, Markdown, and any other text-based format
