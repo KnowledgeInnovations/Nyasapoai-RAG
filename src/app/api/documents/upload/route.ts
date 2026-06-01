@@ -37,13 +37,13 @@ async function embedText(text: string): Promise<number[]> {
 async function extractText(buffer: Buffer, filename: string): Promise<string> {
   const ext = path.extname(filename).toLowerCase()
 
-  // PDF — v1.1.1 exports the parser function directly as module.exports
+  // PDF — pdf-parse v2: new PDFParse({ data: buffer }).getText()
   if (ext === '.pdf') {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mod = await import('pdf-parse') as any
-    const pdfParse = typeof mod === 'function' ? mod : (mod.default ?? mod)
-    const parsed = await pdfParse(buffer)
-    return parsed.text as string
+    const { PDFParse } = await import('pdf-parse') as any
+    const parser = new PDFParse({ data: buffer })
+    const result = await parser.getText()
+    return (result.text as string) ?? ''
   }
 
   // Office formats (DOCX, XLSX, PPTX, ODT, ODS, ODP, DOC, XLS, PPT)
