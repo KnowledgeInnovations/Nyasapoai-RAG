@@ -17,7 +17,7 @@ export async function DELETE(
     .single()
 
   if (!membership) return NextResponse.json({ error: 'No workspace found' }, { status: 403 })
-  if (!['senior', 'middle'].includes(membership.role)) {
+  if (!['admin', 'exco', 'senior_manager'].includes(membership.role)) {
     return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
   }
 

@@ -15,10 +15,18 @@ interface Props {
 }
 
 const pageTitles: Record<string, string> = {
-  '/ask':       'Ask AI',
-  '/documents': 'Documents',
-  '/insights':  'Insights',
-  '/settings':  'Settings',
+  '/ask':                          'Ask AI',
+  '/documents':                    'Documents',
+  '/dashboards/executive':         'Executive Dashboard',
+  '/dashboards/sales':             'Sales Dashboard',
+  '/dashboards/marketing':         'Marketing Dashboard',
+  '/dashboards/client-service':    'Client Service Dashboard',
+  '/dashboards/development':       'Development Dashboard',
+  '/dashboards/finance':           'Finance Dashboard',
+  '/dashboards/hr':                'HR Dashboard',
+  '/dashboards/communications':    'Communications Dashboard',
+  '/dashboards':                   'Dashboards',
+  '/settings':                     'Settings',
 }
 
 export default function AppTopNav({ user, onMenuOpen, sidebarCollapsed, onToggleSidebar }: Props) {

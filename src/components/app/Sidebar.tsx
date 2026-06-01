@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  MessageSquare, FileText, BarChart3, Settings,
+  MessageSquare, FileText, LayoutDashboard, Settings,
   ChevronLeft, ChevronRight, X, Plus, History, Trash2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -18,14 +18,19 @@ interface HistoryItem {
   created_at: string
 }
 
-const navItems = [
-  { href: '/ask',       icon: MessageSquare, label: 'Ask AI' },
-  { href: '/documents', icon: FileText,      label: 'Documents' },
-  { href: '/insights',  icon: BarChart3,     label: 'Insights' },
-  { href: '/settings',  icon: Settings,      label: 'Settings' },
-]
+const DASHBOARD_ROLES = ['admin', 'exco', 'senior_manager']
+
+function getNavItems(role: string) {
+  return [
+    { href: '/ask',        icon: MessageSquare,   label: 'Ask AI'     },
+    { href: '/documents',  icon: FileText,         label: 'Documents'  },
+    ...(DASHBOARD_ROLES.includes(role) ? [{ href: '/dashboards', icon: LayoutDashboard, label: 'Dashboards' }] : []),
+    { href: '/settings',   icon: Settings,         label: 'Settings'   },
+  ]
+}
 
 interface Props {
+  role: string
   collapsed: boolean
   mobileOpen: boolean
   onClose: () => void
@@ -40,15 +45,16 @@ function deriveTitle(query: string): string {
   return words.join(' ') + (q.split(/\s+/).length > 6 ? '…' : '')
 }
 
-export default function AppSidebar({ collapsed, mobileOpen, onClose, onToggle }: Props) {
+export default function AppSidebar({ role, collapsed, mobileOpen, onClose, onToggle }: Props) {
   const pathname = usePathname()
   const router   = useRouter()
   const isAsk    = pathname.startsWith('/ask')
+  const navItems = useMemo(() => getNavItems(role), [role])
 
   // Prefetch all nav routes immediately so link clicks feel instant
   useEffect(() => {
     navItems.forEach(({ href }) => router.prefetch(href))
-  }, [router])
+  }, [router, navItems])
 
   const [history,      setHistory]      = useState<HistoryItem[]>([])
   const [activeConvId, setActiveConvId] = useState<string | null>(null)

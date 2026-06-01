@@ -7,10 +7,11 @@ import AppTopNav from './TopNav'
 
 interface Props {
   user: User
+  role: string
   children: React.ReactNode
 }
 
-export default function AppShell({ user, children }: Props) {
+export default function AppShell({ user, role, children }: Props) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -46,6 +47,7 @@ export default function AppShell({ user, children }: Props) {
       )}
 
       <AppSidebar
+        role={role}
         collapsed={collapsed}
         mobileOpen={mobileOpen}
         onClose={() => setMobileOpen(false)}

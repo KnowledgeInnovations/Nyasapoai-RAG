@@ -14,7 +14,7 @@ export default async function DocumentsPage() {
   let initialCategories = mergeWithDbCategories([])
 
   if (membership) {
-    canUpload = membership.role === 'senior' || membership.role === 'middle'
+    canUpload = ['admin', 'exco', 'senior_manager'].includes(membership.role)
 
     const supabase = await createClient()
     const [{ data: docs }, { data: dbCats }] = await Promise.all([
