@@ -197,46 +197,63 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    /* ── 1. Embed query ──────────────────────────────────────── */
-    const embRes = await fetch('https://api.openai.com/v1/embeddings', {
-      method: 'POST', headers: OPENAI_HEADERS,
-      body: JSON.stringify({ model: 'text-embedding-3-small', input: query }),
-    })
+    /* ── 1. Embed query + fetch document inventory in parallel ── */
+    const svc = getServiceClient()
+    const [embRes, { data: docInventory }] = await Promise.all([
+      fetch('https://api.openai.com/v1/embeddings', {
+        method: 'POST', headers: OPENAI_HEADERS,
+        body: JSON.stringify({ model: 'text-embedding-3-small', input: query }),
+      }),
+      // Full document list so AI knows WHAT files exist, not just what content matched
+      svc.from('documents')
+        .select('title, department, status')
+        .eq('tenant_id', tenantId)
+        .eq('status', 'ready')
+        .order('created_at', { ascending: false })
+        .limit(100),
+    ])
     const embData = await embRes.json()
     const queryEmbedding = embData.data[0].embedding
 
+    // Build a readable inventory string the AI can reference
+    const inventoryText = docInventory?.length
+      ? `\n\nKnowledge base (${docInventory.length} file${docInventory.length !== 1 ? 's' : ''} uploaded):\n` +
+        docInventory.map(d => `• ${d.title}${d.department ? ` [category: ${d.department}]` : ''}`).join('\n')
+      : '\n\nKnowledge base: No files have been uploaded yet.'
+
     /* ── 2. Retrieve chunks via service role (bypasses RLS) ─────
        Tenant isolation enforced by p_tenant_id — this is safe. */
-    const svc = getServiceClient()
     const { data: chunks, error: rpcError } = await svc.rpc('match_document_chunks', {
       query_embedding: queryEmbedding, p_tenant_id: tenantId,
-      match_threshold: 0.2, match_count: 5,
+      match_threshold: 0.15, match_count: 8,
     })
     if (rpcError) console.error('[RAG] RPC error:', JSON.stringify(rpcError))
 
-    /* ── No documents found ──────────────────────────────────── */
+    /* ── No matching chunks — but still answer using inventory ── */
     if (!chunks?.length) {
       const noDocRes = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST', headers: OPENAI_HEADERS,
         body: JSON.stringify({
-          model: 'gpt-4o-mini', temperature: 0.5, max_tokens: 150,
+          model: 'gpt-4o-mini', temperature: 0.5, max_tokens: 200,
           messages: [
-            { role: 'system', content: `You are Devtraco Plus, a friendly AI document assistant for Devtraco (a Ghanaian real estate company). The user asked a question but no documents have been uploaded yet. Respond warmly in 2–3 sentences: acknowledge their specific question in context of the conversation, explain no documents are available yet, and invite them to upload files in the Documents section.` },
+            { role: 'system', content: `You are Devtraco Plus, a friendly AI document assistant for Devtraco (a Ghanaian real estate company).
+No document excerpts matched this query. However, you have the full list of uploaded files below.
+Use that list to answer questions about what files exist. If the question is about file content you cannot answer, say so honestly and direct them to ask AI for specific content questions.` },
             ...historyMsgs,
-            { role: 'user', content: query },
+            { role: 'user', content: `${inventoryText}\n\nQuestion: ${query}` },
           ],
         }),
       })
       const noDocData = await noDocRes.json()
       const msg = noDocData.choices?.[0]?.message?.content?.trim()
-        ?? "I wasn't able to find any relevant documents for that question. It looks like no files have been uploaded yet — head over to the **Documents** section to add your PDFs, contracts, or site reports and I'll be ready to help!"
+        ?? "I couldn't find relevant content for that query. Check the Documents section to see what has been uploaded, or try rephrasing your question."
 
       const title  = makeTitle(query)
-      const convId = newSession ? await saveConv(msg, [], [], 0) : null
+      const convId = newSession ? await saveConv(msg, [], [], 0.3) : null
 
       return new Response(
         new ReadableStream({ async start(c) {
-          await streamWords(c, enc, msg, { risks: [], recommendations: [], citations: [], confidence_score: 0, convId, title })
+          await streamWords(c, enc, msg, { risks: [], recommendations: [], citations: [], confidence_score: 0.3, convId, title })
         }}),
         { headers: sseHeaders() }
       )
@@ -262,7 +279,7 @@ export async function POST(request: NextRequest) {
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           ...historyMsgs,
-          { role: 'user',   content: `Document excerpts:\n${context}\n\nQuestion: ${query}` },
+          { role: 'user',   content: `Document excerpts:\n${context}${inventoryText}\n\nQuestion: ${query}` },
         ],
       }),
       signal: request.signal,

@@ -186,7 +186,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 2: paragraph-aware chunking + batch embedding (100 chunks per API call)
-    const chunks = chunkText(text)
+    // Prepend document title to every chunk so "find file X" queries work via vector search
+    const docTitle   = customTitle.trim() || file.name.replace(/\.[^.]+$/, '')
+    const titleLabel = `[Document: ${docTitle}]\n`
+    const rawChunks  = chunkText(text)
+    const chunks     = rawChunks.map(c => titleLabel + c)
+
     for (let start = 0; start < chunks.length; start += EMBED_BATCH) {
       const batch = chunks.slice(start, start + EMBED_BATCH)
       let embeddings: number[][]
