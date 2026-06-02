@@ -17,15 +17,20 @@ const OPENAI_HEADERS = {
   Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
 }
 
-const SYSTEM_PROMPT = `You are Devtraco Plus, a friendly and professional AI assistant for Devtraco, a leading Ghanaian real estate company. Help the team find clear, accurate answers from their project documents.
+const SYSTEM_PROMPT = `You are Devtraco Plus, the AI assistant for Devtraco, a leading Ghanaian real estate company.
 
-Personality: warm, polite, professional — like a knowledgeable colleague always happy to help.
+Personality: warm, polite, professional — a knowledgeable colleague always ready to help.
+
+You have TWO sources of information — use BOTH:
+1. KNOWLEDGE BASE INVENTORY — the complete list of every file uploaded. Use this to answer questions like "do we have X?" or "what files exist?". If a file appears in the inventory, it EXISTS — tell the user clearly.
+2. DOCUMENT EXCERPTS — relevant text retrieved from those files by semantic search. Use these to answer questions about the actual content of documents.
 
 Rules:
-- Answer ONLY using the provided document excerpts — never invent facts
-- Cite sources inline like [1], [2] so the user can verify
-- Be concise but thorough
-- If context is insufficient, say so kindly
+- For "do we have X?" or "is there a document about Y?" — CHECK the inventory first and answer directly. Never say you cannot access files when they appear in the inventory.
+- For content questions — quote and cite from the document excerpts using [1], [2] etc.
+- Never invent facts not present in the excerpts or inventory
+- Be direct and specific — give names, numbers, and categories from the documents
+- If no relevant excerpts were found but a document exists in the inventory, acknowledge the document exists and suggest the user ask more specific questions about its content
 
 Format your response EXACTLY like this (no other format):
 
@@ -215,11 +220,11 @@ export async function POST(request: NextRequest) {
     const embData = await embRes.json()
     const queryEmbedding = embData.data[0].embedding
 
-    // Build a readable inventory string the AI can reference
+    // Inventory is shown FIRST so the AI always knows what files exist
     const inventoryText = docInventory?.length
-      ? `\n\nKnowledge base (${docInventory.length} file${docInventory.length !== 1 ? 's' : ''} uploaded):\n` +
+      ? `KNOWLEDGE BASE INVENTORY (${docInventory.length} file${docInventory.length !== 1 ? 's' : ''}):\n` +
         docInventory.map(d => `• ${d.title}${d.department ? ` [category: ${d.department}]` : ''}`).join('\n')
-      : '\n\nKnowledge base: No files have been uploaded yet.'
+      : 'KNOWLEDGE BASE INVENTORY: No files have been uploaded yet.'
 
     /* ── 2. Retrieve chunks via service role (bypasses RLS) ─────
        Tenant isolation enforced by p_tenant_id — this is safe. */
@@ -229,16 +234,16 @@ export async function POST(request: NextRequest) {
     })
     if (rpcError) console.error('[RAG] RPC error:', JSON.stringify(rpcError))
 
-    /* ── No matching chunks — but still answer using inventory ── */
+    /* ── No matching chunks — answer from inventory ─────────── */
     if (!chunks?.length) {
       const noDocRes = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST', headers: OPENAI_HEADERS,
         body: JSON.stringify({
-          model: 'gpt-4o-mini', temperature: 0.5, max_tokens: 200,
+          model: 'gpt-4o-mini', temperature: 0.4, max_tokens: 250,
           messages: [
-            { role: 'system', content: `You are Devtraco Plus, a friendly AI document assistant for Devtraco (a Ghanaian real estate company).
-No document excerpts matched this query. However, you have the full list of uploaded files below.
-Use that list to answer questions about what files exist. If the question is about file content you cannot answer, say so honestly and direct them to ask AI for specific content questions.` },
+            { role: 'system', content: `You are Devtraco Plus, the AI assistant for Devtraco (a Ghanaian real estate company).
+No specific document excerpts matched this query, but you have the complete file inventory below.
+IMPORTANT: If the user asks whether a file or category of document exists, CHECK the inventory and answer directly — "Yes, we have..." or "No, there are none...". Never say you cannot access files when they appear in the inventory. Be specific about names and categories.` },
             ...historyMsgs,
             { role: 'user', content: `${inventoryText}\n\nQuestion: ${query}` },
           ],
@@ -279,7 +284,7 @@ Use that list to answer questions about what files exist. If the question is abo
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           ...historyMsgs,
-          { role: 'user',   content: `Document excerpts:\n${context}${inventoryText}\n\nQuestion: ${query}` },
+          { role: 'user',   content: `${inventoryText}\n\nDOCUMENT EXCERPTS FROM SEARCH:\n${context}\n\nQuestion: ${query}` },
         ],
       }),
       signal: request.signal,

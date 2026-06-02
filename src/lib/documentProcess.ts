@@ -32,7 +32,7 @@ export async function extractText(buffer: Buffer, filename: string): Promise<str
 
   if (OFFICE_EXTS.has(ext)) {
     const ast = await parseOffice(buffer)
-    return ast.toText()
+    return ast.toText() ?? ''
   }
 
   // CSV, TXT, JSON, Markdown, etc.
@@ -40,7 +40,8 @@ export async function extractText(buffer: Buffer, filename: string): Promise<str
 }
 
 // ── Paragraph-aware chunking ───────────────────────────────────────
-export function chunkText(text: string, maxChars = 1500, overlapChars = 300): string[] {
+export function chunkText(text: string | null | undefined, maxChars = 1500, overlapChars = 300): string[] {
+  if (!text?.trim()) return []
   const normalised = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
   const paragraphs = normalised.split(/\n\n+/).map(p => p.trim()).filter(p => p.length > 20)
 

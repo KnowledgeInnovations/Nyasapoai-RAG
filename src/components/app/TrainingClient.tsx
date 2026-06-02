@@ -63,6 +63,9 @@ export default function TrainingClient({ docs, trainedCount, untrainedCount }: {
     setState(doc.id, { status: 'running', message: 'Starting…', progress: 0, chunks: 0, log: [] })
     setExpanded(prev => ({ ...prev, [doc.id]: true }))
 
+    // Track final status in a local variable to avoid stale-closure issues with React state
+    let finalStatus: TrainStatus = 'running'
+
     try {
       const res = await fetch(`/api/documents/${doc.id}/train`, {
         method: 'POST',
@@ -87,8 +90,12 @@ export default function TrainingClient({ docs, trainedCount, untrainedCount }: {
             const event = JSON.parse(line.slice(6)) as {
               stage: string; message: string; progress: number; chunkCount?: number
             }
+            const evtStatus: TrainStatus =
+              event.stage === 'complete' ? 'done' :
+              event.stage === 'error'    ? 'error' : 'running'
+            finalStatus = evtStatus
             setState(doc.id, prev => ({
-              status:   event.stage === 'complete' ? 'done' : event.stage === 'error' ? 'error' : 'running',
+              status:   evtStatus,
               message:  event.message,
               progress: Math.max(event.progress, 0),
               chunks:   event.chunkCount ?? prev.chunks,
@@ -98,12 +105,10 @@ export default function TrainingClient({ docs, trainedCount, untrainedCount }: {
         }
       }
 
-      if (getState(doc.id).status !== 'error') {
-        setState(doc.id, { status: 'done' })
-        router.refresh()
-      }
+      if (finalStatus === 'done') router.refresh()
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
+        finalStatus = 'error'
         setState(doc.id, { status: 'error', message: (err as Error).message })
       }
     }
