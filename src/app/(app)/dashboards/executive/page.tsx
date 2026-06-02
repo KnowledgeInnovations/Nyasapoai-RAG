@@ -1,10 +1,10 @@
-﻿import type { Metadata } from 'next'
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { FileText, MessageSquare, AlertTriangle, TrendingUp } from 'lucide-react'
 import { getMembership, createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import DashboardShell from '@/components/app/DashboardShell'
-import DashboardInsight from '@/components/app/DashboardInsight'
+import DashboardInsightsGroup from '@/components/app/DashboardInsightsGroup'
 import { StatCard } from '@/components/app/DashboardWidgets'
 
 export const metadata: Metadata = { title: 'Executive Dashboard - Devtraco Plus' }
@@ -18,6 +18,12 @@ function svc() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 }
+
+const INSIGHTS = [
+  { label: 'Company Overview',    question: 'Summarise the overall business performance, active projects, financial status, and any strategic decisions mentioned across all uploaded documents. Give specific figures where available.' },
+  { label: 'Urgent Attention',    question: 'What are the most urgent issues, outstanding approvals, overdue items, or risks that leadership needs to address immediately based on the documents?' },
+  { label: 'Growth & Highlights', question: 'What project completions, revenue wins, new contracts signed, or positive developments are visible in the uploaded documents?' },
+]
 
 export default async function ExecutiveDashboard() {
   const membership = await getMembership()
@@ -45,27 +51,15 @@ export default async function ExecutiveDashboard() {
 
   return (
     <DashboardShell title="Executive Dashboard" description="Company-wide performance, risks, and strategic overview from your documents." lastUpdated={now}>
-
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={FileText}      label="Documents Indexed"    value={String(docCount ?? 0)}   sub="Available for AI analysis"       live color="text-indigo-600 bg-indigo-50" />
-        <StatCard icon={MessageSquare} label="AI Queries (30 days)" value={String(convsMonth ?? 0)} sub={`${convsTotal ?? 0} all-time`}   live color="text-brand bg-brand-light" />
-        <StatCard icon={AlertTriangle} label="Risks Flagged"        value={String(totalRisks)}      sub="Identified in AI answers"        live color="text-amber-600 bg-amber-50" />
-        <StatCard icon={TrendingUp}    label="Active Insights"      value={docCount ? '3' : '0'}    sub="Live AI analysis below"          live color="text-green-600 bg-green-50" />
+        <StatCard icon={FileText}      label="Documents Indexed"    value={String(docCount ?? 0)}   sub="Available for AI analysis"     live color="text-indigo-600 bg-indigo-50" />
+        <StatCard icon={MessageSquare} label="AI Queries (30 days)" value={String(convsMonth ?? 0)} sub={`${convsTotal ?? 0} all-time`}  live color="text-brand bg-brand-light" />
+        <StatCard icon={AlertTriangle} label="Risks Flagged"        value={String(totalRisks)}      sub="Identified in AI answers"       live color="text-amber-600 bg-amber-50" />
+        <StatCard icon={TrendingUp}    label="Active Insights"      value={docCount ? '3' : '0'}    sub="Live AI analysis below"         live color="text-green-600 bg-green-50" />
       </div>
-
-      {/* AI-powered insights */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <DashboardInsight
-          label="Company Overview"
-          question="Summarise the overall business performance, active projects, financial status, and any strategic decisions mentioned across all uploaded documents. Give specific figures where available." />
-        <DashboardInsight
-          label="Urgent Attention"
-          question="What are the most urgent issues, outstanding approvals, overdue items, or risks that leadership needs to address immediately based on the documents?" />
-        <DashboardInsight
-          label="Growth & Highlights"
-          question="What project completions, revenue wins, new contracts signed, or positive developments are visible in the uploaded documents?" />
+        <DashboardInsightsGroup insights={INSIGHTS} />
       </div>
-
     </DashboardShell>
   )
 }

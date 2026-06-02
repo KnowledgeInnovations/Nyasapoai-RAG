@@ -1,10 +1,10 @@
-﻿import type { Metadata } from 'next'
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { Users, UserPlus, MessageSquare, Calendar } from 'lucide-react'
 import { getMembership, createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import DashboardShell from '@/components/app/DashboardShell'
-import DashboardInsight from '@/components/app/DashboardInsight'
+import DashboardInsightsGroup from '@/components/app/DashboardInsightsGroup'
 import { StatCard } from '@/components/app/DashboardWidgets'
 
 export const metadata: Metadata = { title: 'HR Dashboard - Devtraco Plus' }
@@ -18,6 +18,12 @@ function svc() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 }
+
+const INSIGHTS = [
+  { label: 'Staffing & Headcount',  question: 'What is the current staffing situation? Are there any vacancies, new hires, departures, or headcount changes mentioned in HR documents? Include specific numbers and departments.' },
+  { label: 'Performance & KPIs',    question: 'What do the documents reveal about employee performance, KPI achievements, appraisal results, or disciplinary matters? Who is performing well or struggling?' },
+  { label: 'Recruitment & Training', question: 'What recruitment activities, training programmes, skills gaps, or development plans are mentioned in the documents? What positions are being filled or need filling?' },
+]
 
 export default async function HRDashboard() {
   const membership = await getMembership()
@@ -42,26 +48,15 @@ export default async function HRDashboard() {
 
   return (
     <DashboardShell title="HR Dashboard" description="Headcount, recruitment, performance, and staff development from your documents." lastUpdated={now}>
-
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Users}         label="Documents Indexed"    value={String(docCount ?? 0)}   sub="Workspace knowledge"           live color="text-rose-600 bg-rose-50" />
         <StatCard icon={MessageSquare} label="AI Queries (30 days)" value={String(convsMonth ?? 0)} sub={`${convsTotal ?? 0} all-time`} live color="text-brand bg-brand-light" />
         <StatCard icon={UserPlus}      label="Staffing Status"      value="AI"                      sub="Analysed from documents"       live color="text-amber-600 bg-amber-50" />
-        <StatCard icon={Calendar}      label="Leave and Attendance" value="AI"                      sub="Analysed from documents"       live color="text-purple-600 bg-purple-50" />
+        <StatCard icon={Calendar}      label="Leave & Attendance"   value="AI"                      sub="Analysed from documents"       live color="text-purple-600 bg-purple-50" />
       </div>
-
       <div className="grid gap-4 lg:grid-cols-3">
-        <DashboardInsight
-          label="Staffing and Headcount"
-          question="What does the current staffing situation look like? Are there any vacancies, new hires, departures, or headcount changes mentioned in HR documents? Include specific numbers and departments." />
-        <DashboardInsight
-          label="Performance and KPIs"
-          question="What do the documents reveal about employee performance, KPI achievements, appraisal results, or disciplinary matters? Who is performing well or struggling?" />
-        <DashboardInsight
-          label="Recruitment and Training"
-          question="What recruitment activities, training programmes, skills gaps, or development plans are mentioned in the documents? What positions are being filled or need filling?" />
+        <DashboardInsightsGroup insights={INSIGHTS} />
       </div>
-
     </DashboardShell>
   )
 }

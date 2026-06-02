@@ -1,11 +1,11 @@
-﻿import type { Metadata } from 'next'
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { HardHat, Ruler, MessageSquare, Hammer } from 'lucide-react'
 import { getMembership, createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { CATEGORIES } from '@/lib/documentCategories'
 import DashboardShell from '@/components/app/DashboardShell'
-import DashboardInsight from '@/components/app/DashboardInsight'
+import DashboardInsightsGroup from '@/components/app/DashboardInsightsGroup'
 import { StatCard, DocList } from '@/components/app/DashboardWidgets'
 
 export const metadata: Metadata = { title: 'Development Dashboard - Devtraco Plus' }
@@ -19,6 +19,12 @@ function svc() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 }
+
+const INSIGHTS = [
+  { label: 'Project Progress',   question: 'What is the current construction progress on active projects? What percentage complete are they? Are there any delays, stoppages, or milestone achievements mentioned in site reports?' },
+  { label: 'Costs & Budget',     question: 'Are there any budget overruns, cost escalations, procurement issues, or unexpected expenses mentioned in site reports or financial documents? How does actual spend compare to budget?' },
+  { label: 'Contractor Quality', question: 'What is the performance of contractors and subcontractors? Are there any quality issues, defects, disputes, or non-compliance issues mentioned in the documents?' },
+]
 
 export default async function DevelopmentDashboard() {
   const membership = await getMembership()
@@ -54,27 +60,16 @@ export default async function DevelopmentDashboard() {
 
   return (
     <DashboardShell title="Development Dashboard" description="Project progress, milestones, costs, and contractor performance from your documents." lastUpdated={now}>
-
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={HardHat}       label="Site Reports"         value={String(siteReportCount ?? 0)} sub="Indexed and searchable"       live color="text-orange-600 bg-orange-50" />
-        <StatCard icon={Ruler}         label="Design and Plans"     value={String(designCount ?? 0)}     sub="Indexed and searchable"       live color="text-cyan-600 bg-cyan-50" />
-        <StatCard icon={MessageSquare} label="AI Queries (7 days)"  value={String(convsWeek ?? 0)}       sub={`${convsTotal ?? 0} all-time`} live color="text-brand bg-brand-light" />
-        <StatCard icon={Hammer}        label="Project Status"       value="AI"                           sub="Analysed from documents"       live color="text-purple-600 bg-purple-50" />
+        <StatCard icon={HardHat}       label="Site Reports"        value={String(siteReportCount ?? 0)} sub="Indexed and searchable"        live color="text-orange-600 bg-orange-50" />
+        <StatCard icon={Ruler}         label="Design and Plans"    value={String(designCount ?? 0)}     sub="Indexed and searchable"        live color="text-cyan-600 bg-cyan-50" />
+        <StatCard icon={MessageSquare} label="AI Queries (7 days)" value={String(convsWeek ?? 0)}       sub={`${convsTotal ?? 0} all-time`} live color="text-brand bg-brand-light" />
+        <StatCard icon={Hammer}        label="Project Status"      value="AI"                           sub="Analysed from documents"        live color="text-purple-600 bg-purple-50" />
       </div>
-
       <div className="grid gap-4 lg:grid-cols-3">
-        <DashboardInsight
-          label="Project Progress"
-          question="What is the current construction progress on active projects? What percentage complete are they? Are there any delays, stoppages, or milestone achievements mentioned in site reports?" />
-        <DashboardInsight
-          label="Costs and Budget"
-          question="Are there any budget overruns, cost escalations, procurement issues, or unexpected expenses mentioned in site reports or financial documents? How does actual spend compare to budget?" />
-        <DashboardInsight
-          label="Contractor and Quality"
-          question="What is the performance of contractors and subcontractors? Are there any quality issues, defects, disputes, or non-compliance issues mentioned in the documents?" />
+        <DashboardInsightsGroup insights={INSIGHTS} />
       </div>
-
-        <DocList docs={allDevDocs} cat={siteReportCat} title="Site Reports and Design Plans" emptyText="No development documents yet" />
+      <DocList docs={allDevDocs} cat={siteReportCat} title="Site Reports and Design Plans" emptyText="No development documents yet" />
     </DashboardShell>
   )
 }

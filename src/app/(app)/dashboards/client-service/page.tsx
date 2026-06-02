@@ -1,11 +1,11 @@
-﻿import type { Metadata } from 'next'
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { HeartHandshake, MessageSquare, ClipboardList, Star } from 'lucide-react'
 import { getMembership, createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { CATEGORIES } from '@/lib/documentCategories'
 import DashboardShell from '@/components/app/DashboardShell'
-import DashboardInsight from '@/components/app/DashboardInsight'
+import DashboardInsightsGroup from '@/components/app/DashboardInsightsGroup'
 import { StatCard, DocList } from '@/components/app/DashboardWidgets'
 
 export const metadata: Metadata = { title: 'Client Service Dashboard - Devtraco Plus' }
@@ -19,6 +19,12 @@ function svc() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 }
+
+const INSIGHTS = [
+  { label: 'Client Issues',    question: 'What client complaints, outstanding requests, disputes, or unresolved issues are mentioned in the uploaded documents? Who are the clients involved and what is the status?' },
+  { label: 'Onboarding & Pay', question: 'What is the client onboarding status? Are there any delayed payments, outstanding balances, payment plans, or collection issues mentioned in client documents?' },
+  { label: 'Satisfaction',     question: 'What do the documents reveal about client satisfaction levels, feedback, inspection outcomes, or service delivery quality?' },
+]
 
 export default async function ClientServiceDashboard() {
   const membership = await getMembership()
@@ -46,27 +52,16 @@ export default async function ClientServiceDashboard() {
 
   return (
     <DashboardShell title="Client Service Dashboard" description="Client onboarding, payments, satisfaction, and open requests from your documents." lastUpdated={now}>
-
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={HeartHandshake} label="Legal and Client Docs"  value={String(legalCount ?? 0)} sub="Permits, deeds, compliance"   live color="text-cyan-600 bg-cyan-50" />
-        <StatCard icon={MessageSquare}  label="AI Queries (7 days)"    value={String(convsWeek ?? 0)}  sub={`${convsTotal ?? 0} all-time`} live color="text-brand bg-brand-light" />
-        <StatCard icon={ClipboardList}  label="Client Issues"          value="AI"                      sub="Analysed from documents"       live color="text-amber-600 bg-amber-50" />
-        <StatCard icon={Star}           label="Satisfaction"           value="AI"                      sub="Analysed from documents"       live color="text-purple-600 bg-purple-50" />
+        <StatCard icon={HeartHandshake} label="Legal and Client Docs" value={String(legalCount ?? 0)} sub="Permits, deeds, compliance"   live color="text-cyan-600 bg-cyan-50" />
+        <StatCard icon={MessageSquare}  label="AI Queries (7 days)"   value={String(convsWeek ?? 0)}  sub={`${convsTotal ?? 0} all-time`} live color="text-brand bg-brand-light" />
+        <StatCard icon={ClipboardList}  label="Client Issues"         value="AI"                      sub="Analysed from documents"       live color="text-amber-600 bg-amber-50" />
+        <StatCard icon={Star}           label="Satisfaction"          value="AI"                      sub="Analysed from documents"       live color="text-purple-600 bg-purple-50" />
       </div>
-
       <div className="grid gap-4 lg:grid-cols-3">
-        <DashboardInsight
-          label="Client Issues and Requests"
-          question="What client complaints, outstanding requests, disputes, or unresolved issues are mentioned in the uploaded documents? Who are the clients involved and what is the status?" />
-        <DashboardInsight
-          label="Onboarding and Payments"
-          question="What is the client onboarding status? Are there any delayed payments, outstanding balances, payment plans, or collection issues mentioned in client documents?" />
-        <DashboardInsight
-          label="Satisfaction and Response"
-          question="What do the documents reveal about client satisfaction levels, feedback, inspection outcomes, or service delivery quality?" />
+        <DashboardInsightsGroup insights={INSIGHTS} />
       </div>
-
-        <DocList docs={legalDocs} cat={cat} title="Legal and Client Documents" emptyText="No legal documents yet" />
+      <DocList docs={legalDocs} cat={cat} title="Legal and Client Documents" emptyText="No legal documents yet" />
     </DashboardShell>
   )
 }

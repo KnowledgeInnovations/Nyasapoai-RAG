@@ -1,11 +1,11 @@
-﻿import type { Metadata } from 'next'
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { FileText, MessageSquare, TrendingUp, Target } from 'lucide-react'
 import { getMembership, createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { CATEGORIES } from '@/lib/documentCategories'
 import DashboardShell from '@/components/app/DashboardShell'
-import DashboardInsight from '@/components/app/DashboardInsight'
+import DashboardInsightsGroup from '@/components/app/DashboardInsightsGroup'
 import { StatCard, DocList } from '@/components/app/DashboardWidgets'
 
 export const metadata: Metadata = { title: 'Sales Dashboard - Devtraco Plus' }
@@ -19,6 +19,12 @@ function svc() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 }
+
+const INSIGHTS = [
+  { label: 'Contracts & Deals',       question: 'How many contracts have been signed? What are the total values, client names, property types, and key terms mentioned in the uploaded contracts?' },
+  { label: 'Sales Performance',        question: 'Are we hitting our sales targets? What does the sales performance look like compared to any targets, projections, or previous periods mentioned in the documents?' },
+  { label: 'Pipeline & Reservations',  question: 'What leads, reservations, pending deals, or upcoming sales are mentioned in the documents? What is the conversion outlook?' },
+]
 
 export default async function SalesDashboard() {
   const membership = await getMembership()
@@ -46,27 +52,16 @@ export default async function SalesDashboard() {
 
   return (
     <DashboardShell title="Sales Dashboard" description="Contracts, pipeline, reservations, and sales performance from your documents." lastUpdated={now}>
-
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={FileText}      label="Contracts Indexed"    value={String(contractCount ?? 0)} sub="Ready for AI search"         live color="text-amber-600 bg-amber-50" />
-        <StatCard icon={MessageSquare} label="AI Queries (7 days)"  value={String(convsWeek ?? 0)}     sub={`${convsTotal ?? 0} all-time`} live color="text-brand bg-brand-light" />
-        <StatCard icon={TrendingUp}    label="Sales Pipeline"       value="AI"                          sub="Analysed from documents"      live color="text-green-600 bg-green-50" />
-        <StatCard icon={Target}        label="Target vs Actual"      value="AI"                         sub="Analysed from documents"      live color="text-purple-600 bg-purple-50" />
+        <StatCard icon={FileText}      label="Contracts Indexed"   value={String(contractCount ?? 0)} sub="Ready for AI search"          live color="text-amber-600 bg-amber-50" />
+        <StatCard icon={MessageSquare} label="AI Queries (7 days)" value={String(convsWeek ?? 0)}     sub={`${convsTotal ?? 0} all-time`}  live color="text-brand bg-brand-light" />
+        <StatCard icon={TrendingUp}    label="Sales Pipeline"      value="AI"                          sub="Analysed from documents"       live color="text-green-600 bg-green-50" />
+        <StatCard icon={Target}        label="Target vs Actual"    value="AI"                          sub="Analysed from documents"       live color="text-purple-600 bg-purple-50" />
       </div>
-
       <div className="grid gap-4 lg:grid-cols-3">
-        <DashboardInsight
-          label="Contracts & Deals"
-          question="How many contracts have been signed? What are the total values, client names, property types, and key terms mentioned in the uploaded contracts?" />
-        <DashboardInsight
-          label="Sales Performance"
-          question="Are we hitting our sales targets? What does the sales performance look like compared to any targets, projections, or previous periods mentioned in the documents?" />
-        <DashboardInsight
-          label="Pipeline & Reservations"
-          question="What leads, reservations, pending deals, or upcoming sales are mentioned in the documents? What is the conversion outlook?" />
+        <DashboardInsightsGroup insights={INSIGHTS} />
       </div>
-
-        <DocList docs={contractDocs} cat={cat} title="Sales Contracts" emptyText="No contracts uploaded yet" />
+      <DocList docs={contractDocs} cat={cat} title="Sales Contracts" emptyText="No contracts uploaded yet" />
     </DashboardShell>
   )
 }
