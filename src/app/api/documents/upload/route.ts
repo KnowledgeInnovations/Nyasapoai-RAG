@@ -14,27 +14,54 @@ const OFFICE_EXTS = new Set([
   '.odt', '.ods', '.odp',
 ])
 
-function chunkText(text: string, chunkSize = 1000, overlap = 200): string[] {
+// Paragraph-aware chunking — respects document structure for better RAG retrieval
+function chunkText(text: string, maxChars = 1500, overlapChars = 300): string[] {
+  const normalised = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+  const paragraphs = normalised.split(/\n\n+/).map(p => p.trim()).filter(p => p.length > 20)
+
   const chunks: string[] = []
-  let start = 0
-  while (start < text.length) {
-    chunks.push(text.slice(start, start + chunkSize))
-    start += chunkSize - overlap
+  let current = ''
+
+  for (const para of paragraphs) {
+    // Paragraph alone exceeds limit — split by sentences
+    if (para.length > maxChars) {
+      const sentences = para.match(/[^.!?\n]+[.!?\n]+/g) ?? [para]
+      for (const sent of sentences) {
+        if (current.length > 0 && (current + ' ' + sent).length > maxChars) {
+          chunks.push(current.trim())
+          // carry last ~overlapChars of current as context
+          current = current.slice(-overlapChars) + ' ' + sent
+        } else {
+          current += (current ? ' ' : '') + sent
+        }
+      }
+    } else if (current.length > 0 && (current + '\n\n' + para).length > maxChars) {
+      chunks.push(current.trim())
+      // overlap: keep last paragraph for continuity
+      const lastPara = current.split('\n\n').pop() ?? ''
+      current = lastPara + '\n\n' + para
+    } else {
+      current += (current ? '\n\n' : '') + para
+    }
   }
+  if (current.trim().length > 50) chunks.push(current.trim())
   return chunks.filter(c => c.trim().length > 50)
 }
 
-async function embedText(text: string): Promise<number[]> {
+const EMBED_BATCH = 100 // OpenAI allows up to 2048 inputs per call
+
+// Embed up to EMBED_BATCH texts in a single OpenAI request
+async function embedBatch(texts: string[]): Promise<number[][]> {
   const res = await fetch('https://api.openai.com/v1/embeddings', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({ model: 'text-embedding-3-small', input: text }),
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+    body: JSON.stringify({ model: 'text-embedding-3-small', input: texts }),
   })
   const data = await res.json()
-  return data.data[0].embedding
+  // Sort by index to guarantee order (OpenAI may return out of order)
+  return (data.data as { index: number; embedding: number[] }[])
+    .sort((a, b) => a.index - b.index)
+    .map(d => d.embedding)
 }
 
 async function extractText(buffer: Buffer, filename: string): Promise<string> {
@@ -158,28 +185,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Step 2: chunk and embed
+    // Step 2: paragraph-aware chunking + batch embedding (100 chunks per API call)
     const chunks = chunkText(text)
-    for (let i = 0; i < chunks.length; i++) {
-      let embedding: number[]
+    for (let start = 0; start < chunks.length; start += EMBED_BATCH) {
+      const batch = chunks.slice(start, start + EMBED_BATCH)
+      let embeddings: number[][]
       try {
-        embedding = await embedText(chunks[i])
+        embeddings = await embedBatch(batch)
       } catch (embedErr) {
-        console.error('Embedding error on chunk', i, embedErr)
+        console.error('Embedding error at batch', start, embedErr)
         await serviceClient.from('documents').update({ status: 'failed' }).eq('id', document.id)
         return NextResponse.json(
           { error: `Embedding failed: ${(embedErr as Error).message}` },
           { status: 500 }
         )
       }
-      await serviceClient.from('document_chunks').insert({
-        document_id: document.id,
-        tenant_id:   membership.tenant_id,
-        chunk_text:  chunks[i],
-        chunk_index: i,
-        embedding,
-        metadata: { source: file.name, chunk_index: i, total_chunks: chunks.length },
-      })
+      await serviceClient.from('document_chunks').insert(
+        batch.map((chunkText, j) => ({
+          document_id: document.id,
+          tenant_id:   membership.tenant_id,
+          chunk_text:  chunkText,
+          chunk_index: start + j,
+          embedding:   embeddings[j],
+          metadata: { source: file.name, chunk_index: start + j, total_chunks: chunks.length },
+        }))
+      )
     }
 
     await serviceClient.from('documents').update({ status: 'ready' }).eq('id', document.id)
