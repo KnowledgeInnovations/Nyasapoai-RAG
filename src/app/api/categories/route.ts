@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+
+function svc() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -13,7 +22,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (!membership) return NextResponse.json({ error: 'No workspace found' }, { status: 403 })
-  if (!['admin', 'exco', 'senior_manager'].includes(membership.role)) {
+  if (!['admin', 'exco', 'senior_manager', 'senior', 'middle'].includes(membership.role)) {
     return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
   }
 
@@ -24,7 +33,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'value and label are required' }, { status: 400 })
   }
 
-  const { data, error } = await supabase
+  // Service role bypasses RLS — auth already validated above
+  const { data, error } = await svc()
     .from('tenant_categories')
     .upsert(
       {
