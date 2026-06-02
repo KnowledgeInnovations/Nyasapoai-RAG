@@ -17,6 +17,7 @@ interface Props {
 const pageTitles: Record<string, string> = {
   '/ask':                          'Ask AI',
   '/documents':                    'Documents',
+  '/training':                     'AI Training',
   '/dashboards/executive':         'Executive Dashboard',
   '/dashboards/sales':             'Sales Dashboard',
   '/dashboards/marketing':         'Marketing Dashboard',

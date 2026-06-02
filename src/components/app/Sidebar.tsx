@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  MessageSquare, FileText, LayoutDashboard, Settings,
+  MessageSquare, FileText, LayoutDashboard, Settings, Brain,
   ChevronLeft, ChevronRight, X, Plus, History, Trash2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -25,6 +25,7 @@ function getNavItems(role: string) {
   return [
     { href: '/ask',        icon: MessageSquare,   label: 'Ask AI'     },
     { href: '/documents',  icon: FileText,         label: 'Documents'  },
+    ...(role === 'admin'               ? [{ href: '/training',   icon: Brain,           label: 'Training'   }] : []),
     ...(DASHBOARD_ROLES.includes(role) ? [{ href: '/dashboards', icon: LayoutDashboard, label: 'Dashboards' }] : []),
     { href: '/settings',   icon: Settings,         label: 'Settings'   },
   ]
