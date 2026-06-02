@@ -1,11 +1,11 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { Megaphone, MessageSquare, TrendingUp, BarChart3 } from 'lucide-react'
 import { getMembership, createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import DashboardShell from '@/components/app/DashboardShell'
 import DashboardInsight from '@/components/app/DashboardInsight'
-import { StatCard, QueryList } from '@/components/app/DashboardWidgets'
+import { StatCard } from '@/components/app/DashboardWidgets'
 
 export const metadata: Metadata = { title: 'Marketing Dashboard - Devtraco Plus' }
 
@@ -32,12 +32,10 @@ export default async function MarketingDashboard() {
     { count: docCount },
     { count: convsMonth },
     { count: convsTotal },
-    { data: recentConvs },
   ] = await Promise.all([
     service.from('documents').select('*', { count: 'exact', head: true }).eq('tenant_id', tid).eq('status', 'ready'),
     supabase.from('conversations').select('*', { count: 'exact', head: true }).eq('tenant_id', tid).gte('created_at', monthAgo),
     supabase.from('conversations').select('*', { count: 'exact', head: true }).eq('tenant_id', tid),
-    supabase.from('conversations').select('id, query, created_at, risks').eq('tenant_id', tid).order('created_at', { ascending: false }).limit(5),
   ])
 
   const now = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -64,7 +62,6 @@ export default async function MarketingDashboard() {
           question="What is the return on marketing investment? Are there any cost-per-lead, cost-per-acquisition, or campaign budget vs results figures in the documents?" />
       </div>
 
-      <QueryList convs={recentConvs} />
     </DashboardShell>
   )
 }

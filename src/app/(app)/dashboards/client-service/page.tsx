@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { HeartHandshake, MessageSquare, ClipboardList, Star } from 'lucide-react'
 import { getMembership, createClient } from '@/lib/supabase/server'
@@ -6,7 +6,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { CATEGORIES } from '@/lib/documentCategories'
 import DashboardShell from '@/components/app/DashboardShell'
 import DashboardInsight from '@/components/app/DashboardInsight'
-import { StatCard, DocList, QueryList } from '@/components/app/DashboardWidgets'
+import { StatCard, DocList } from '@/components/app/DashboardWidgets'
 
 export const metadata: Metadata = { title: 'Client Service Dashboard - Devtraco Plus' }
 
@@ -33,13 +33,11 @@ export default async function ClientServiceDashboard() {
     { count: legalCount },
     { count: convsWeek },
     { count: convsTotal },
-    { data: recentConvs },
     { data: legalDocs },
   ] = await Promise.all([
     service.from('documents').select('*', { count: 'exact', head: true }).eq('tenant_id', tid).eq('department', 'legal').eq('status', 'ready'),
     supabase.from('conversations').select('*', { count: 'exact', head: true }).eq('tenant_id', tid).gte('created_at', weekAgo),
     supabase.from('conversations').select('*', { count: 'exact', head: true }).eq('tenant_id', tid),
-    supabase.from('conversations').select('id, query, created_at, risks').eq('tenant_id', tid).order('created_at', { ascending: false }).limit(5),
     service.from('documents').select('id, title, department, status, created_at').eq('tenant_id', tid).eq('department', 'legal').order('created_at', { ascending: false }).limit(6),
   ])
 
@@ -68,10 +66,7 @@ export default async function ClientServiceDashboard() {
           question="What do the documents reveal about client satisfaction levels, feedback, inspection outcomes, or service delivery quality?" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
         <DocList docs={legalDocs} cat={cat} title="Legal and Client Documents" emptyText="No legal documents yet" />
-        <QueryList convs={recentConvs} />
-      </div>
     </DashboardShell>
   )
 }

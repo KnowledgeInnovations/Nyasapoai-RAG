@@ -4,6 +4,15 @@ import { useEffect, useState } from 'react'
 import { RefreshCw, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+type Sentiment = 'positive' | 'negative' | 'caution' | 'neutral'
+
+interface InsightResult {
+  insight: string
+  sentiment: Sentiment
+  sources: string[]
+  noData?: boolean
+}
+
 const CACHE_TTL = 15 * 60 * 1000 // 15 minutes
 
 function getCached(key: string): InsightResult | null {
@@ -18,15 +27,6 @@ function getCached(key: string): InsightResult | null {
 
 function setCached(key: string, data: InsightResult) {
   try { sessionStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })) } catch {}
-}
-
-type Sentiment = 'positive' | 'negative' | 'caution' | 'neutral'
-
-interface InsightResult {
-  insight: string
-  sentiment: Sentiment
-  sources: string[]
-  noData?: boolean
 }
 
 interface Props {

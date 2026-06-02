@@ -1,11 +1,11 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { FileText, MessageSquare, AlertTriangle, TrendingUp } from 'lucide-react'
 import { getMembership, createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import DashboardShell from '@/components/app/DashboardShell'
 import DashboardInsight from '@/components/app/DashboardInsight'
-import { StatCard, QueryList } from '@/components/app/DashboardWidgets'
+import { StatCard } from '@/components/app/DashboardWidgets'
 
 export const metadata: Metadata = { title: 'Executive Dashboard - Devtraco Plus' }
 
@@ -32,13 +32,11 @@ export default async function ExecutiveDashboard() {
     { count: docCount },
     { count: convsMonth },
     { count: convsTotal },
-    { data: recentConvs },
     { data: riskyConvs },
   ] = await Promise.all([
     service.from('documents').select('*', { count: 'exact', head: true }).eq('tenant_id', tid).eq('status', 'ready'),
     supabase.from('conversations').select('*', { count: 'exact', head: true }).eq('tenant_id', tid).gte('created_at', monthAgo),
     supabase.from('conversations').select('*', { count: 'exact', head: true }).eq('tenant_id', tid),
-    supabase.from('conversations').select('id, query, created_at, risks').eq('tenant_id', tid).order('created_at', { ascending: false }).limit(5),
     supabase.from('conversations').select('id, query, risks').eq('tenant_id', tid).not('risks', 'eq', '[]').order('created_at', { ascending: false }).limit(3),
   ])
 
@@ -68,7 +66,6 @@ export default async function ExecutiveDashboard() {
           question="What project completions, revenue wins, new contracts signed, or positive developments are visible in the uploaded documents?" />
       </div>
 
-      <QueryList convs={recentConvs} />
     </DashboardShell>
   )
 }

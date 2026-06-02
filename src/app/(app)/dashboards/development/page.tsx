@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { HardHat, Ruler, MessageSquare, Hammer } from 'lucide-react'
 import { getMembership, createClient } from '@/lib/supabase/server'
@@ -6,7 +6,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { CATEGORIES } from '@/lib/documentCategories'
 import DashboardShell from '@/components/app/DashboardShell'
 import DashboardInsight from '@/components/app/DashboardInsight'
-import { StatCard, DocList, QueryList } from '@/components/app/DashboardWidgets'
+import { StatCard, DocList } from '@/components/app/DashboardWidgets'
 
 export const metadata: Metadata = { title: 'Development Dashboard - Devtraco Plus' }
 
@@ -34,7 +34,6 @@ export default async function DevelopmentDashboard() {
     { count: designCount },
     { count: convsWeek },
     { count: convsTotal },
-    { data: recentConvs },
     { data: siteDocs },
     { data: designDocs },
   ] = await Promise.all([
@@ -42,7 +41,6 @@ export default async function DevelopmentDashboard() {
     service.from('documents').select('*', { count: 'exact', head: true }).eq('tenant_id', tid).eq('department', 'design-plans').eq('status', 'ready'),
     supabase.from('conversations').select('*', { count: 'exact', head: true }).eq('tenant_id', tid).gte('created_at', weekAgo),
     supabase.from('conversations').select('*', { count: 'exact', head: true }).eq('tenant_id', tid),
-    supabase.from('conversations').select('id, query, created_at, risks').eq('tenant_id', tid).order('created_at', { ascending: false }).limit(5),
     service.from('documents').select('id, title, department, status, created_at').eq('tenant_id', tid).eq('department', 'site-reports').order('created_at', { ascending: false }).limit(4),
     service.from('documents').select('id, title, department, status, created_at').eq('tenant_id', tid).eq('department', 'design-plans').order('created_at', { ascending: false }).limit(4),
   ])
@@ -76,10 +74,7 @@ export default async function DevelopmentDashboard() {
           question="What is the performance of contractors and subcontractors? Are there any quality issues, defects, disputes, or non-compliance issues mentioned in the documents?" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
         <DocList docs={allDevDocs} cat={siteReportCat} title="Site Reports and Design Plans" emptyText="No development documents yet" />
-        <QueryList convs={recentConvs} />
-      </div>
     </DashboardShell>
   )
 }

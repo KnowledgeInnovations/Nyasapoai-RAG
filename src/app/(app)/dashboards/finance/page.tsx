@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { Banknote, TrendingDown, MessageSquare, PiggyBank } from 'lucide-react'
 import { getMembership, createClient } from '@/lib/supabase/server'
@@ -6,7 +6,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { CATEGORIES } from '@/lib/documentCategories'
 import DashboardShell from '@/components/app/DashboardShell'
 import DashboardInsight from '@/components/app/DashboardInsight'
-import { StatCard, DocList, QueryList } from '@/components/app/DashboardWidgets'
+import { StatCard, DocList } from '@/components/app/DashboardWidgets'
 
 export const metadata: Metadata = { title: 'Finance Dashboard - Devtraco Plus' }
 
@@ -33,13 +33,11 @@ export default async function FinanceDashboard() {
     { count: financeDocCount },
     { count: convsMonth },
     { count: convsTotal },
-    { data: recentConvs },
     { data: financeDocs },
   ] = await Promise.all([
     service.from('documents').select('*', { count: 'exact', head: true }).eq('tenant_id', tid).eq('department', 'finance').eq('status', 'ready'),
     supabase.from('conversations').select('*', { count: 'exact', head: true }).eq('tenant_id', tid).gte('created_at', monthAgo),
     supabase.from('conversations').select('*', { count: 'exact', head: true }).eq('tenant_id', tid),
-    supabase.from('conversations').select('id, query, created_at, risks').eq('tenant_id', tid).order('created_at', { ascending: false }).limit(5),
     service.from('documents').select('id, title, department, status, created_at').eq('tenant_id', tid).eq('department', 'finance').order('created_at', { ascending: false }).limit(6),
   ])
 
@@ -68,10 +66,7 @@ export default async function FinanceDashboard() {
           question="What financial risks, budget overruns, cash flow concerns, or unusual costs are mentioned in the documents? Is the company in a healthy or stressed financial position?" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
         <DocList docs={financeDocs} cat={cat} title="Finance Documents" emptyText="No finance documents yet" />
-        <QueryList convs={recentConvs} />
-      </div>
     </DashboardShell>
   )
 }

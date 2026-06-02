@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { FileText, MessageSquare, TrendingUp, Target } from 'lucide-react'
 import { getMembership, createClient } from '@/lib/supabase/server'
@@ -6,7 +6,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { CATEGORIES } from '@/lib/documentCategories'
 import DashboardShell from '@/components/app/DashboardShell'
 import DashboardInsight from '@/components/app/DashboardInsight'
-import { StatCard, DocList, QueryList } from '@/components/app/DashboardWidgets'
+import { StatCard, DocList } from '@/components/app/DashboardWidgets'
 
 export const metadata: Metadata = { title: 'Sales Dashboard - Devtraco Plus' }
 
@@ -33,13 +33,11 @@ export default async function SalesDashboard() {
     { count: contractCount },
     { count: convsWeek },
     { count: convsTotal },
-    { data: recentConvs },
     { data: contractDocs },
   ] = await Promise.all([
     service.from('documents').select('*', { count: 'exact', head: true }).eq('tenant_id', tid).eq('department', 'contracts').eq('status', 'ready'),
     supabase.from('conversations').select('*', { count: 'exact', head: true }).eq('tenant_id', tid).gte('created_at', weekAgo),
     supabase.from('conversations').select('*', { count: 'exact', head: true }).eq('tenant_id', tid),
-    supabase.from('conversations').select('id, query, created_at, risks').eq('tenant_id', tid).order('created_at', { ascending: false }).limit(5),
     service.from('documents').select('id, title, department, status, created_at').eq('tenant_id', tid).eq('department', 'contracts').order('created_at', { ascending: false }).limit(6),
   ])
 
@@ -68,10 +66,7 @@ export default async function SalesDashboard() {
           question="What leads, reservations, pending deals, or upcoming sales are mentioned in the documents? What is the conversion outlook?" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
         <DocList docs={contractDocs} cat={cat} title="Sales Contracts" emptyText="No contracts uploaded yet" />
-        <QueryList convs={recentConvs} />
-      </div>
     </DashboardShell>
   )
 }
