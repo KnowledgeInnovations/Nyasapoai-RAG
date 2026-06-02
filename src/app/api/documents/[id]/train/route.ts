@@ -64,7 +64,7 @@ export async function POST(
 
         const text = await extractText(buffer, doc.source)
 
-        if (!text.trim()) throw new Error('No text could be extracted. The file may be image-based or corrupted.')
+        if (!text?.trim()) throw new Error('No text could be extracted. The file may be image-based, password-protected, or has an unsupported format.')
 
         // ── 3. Chunk ──────────────────────────────────────────────
         send({ stage: 'chunking', message: 'Analysing document structure…', progress: 25 })

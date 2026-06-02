@@ -23,11 +23,12 @@ export async function extractText(buffer: Buffer, filename: string): Promise<str
   const ext = path.extname(filename).toLowerCase()
 
   if (ext === '.pdf') {
+    // pdf-parse v2 class API — new PDFParse({ data: buffer }).getText()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mod  = await import('pdf-parse') as any
-    const fn   = typeof mod === 'function' ? mod : (mod.default ?? mod)
-    const parsed = await fn(buffer)
-    return parsed.text as string
+    const { PDFParse } = await import('pdf-parse') as any
+    const parser = new PDFParse({ data: buffer })
+    const result = await parser.getText()
+    return (result?.text as string) ?? ''
   }
 
   if (OFFICE_EXTS.has(ext)) {
