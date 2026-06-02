@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 import { cn } from '@/lib/utils'
 
 const TABS = [
@@ -24,6 +25,12 @@ interface Props {
 
 export default function DashboardShell({ title, description, lastUpdated, children }: Props) {
   const pathname = usePathname()
+  const router   = useRouter()
+
+  // Prefetch all dashboard tabs on mount so switching is instant
+  useEffect(() => {
+    TABS.forEach(tab => router.prefetch(tab.href))
+  }, [router])
 
   return (
     <div className="space-y-6">
@@ -47,6 +54,7 @@ export default function DashboardShell({ title, description, lastUpdated, childr
             <Link
               key={tab.href}
               href={tab.href}
+              onMouseEnter={() => router.prefetch(tab.href)}
               className={cn(
                 'shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition whitespace-nowrap',
                 active

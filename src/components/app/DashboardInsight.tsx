@@ -4,6 +4,22 @@ import { useEffect, useState } from 'react'
 import { RefreshCw, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+const CACHE_TTL = 15 * 60 * 1000 // 15 minutes
+
+function getCached(key: string): InsightResult | null {
+  try {
+    const raw = sessionStorage.getItem(key)
+    if (!raw) return null
+    const { data, ts }: { data: InsightResult; ts: number } = JSON.parse(raw)
+    if (Date.now() - ts > CACHE_TTL) { sessionStorage.removeItem(key); return null }
+    return data
+  } catch { return null }
+}
+
+function setCached(key: string, data: InsightResult) {
+  try { sessionStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })) } catch {}
+}
+
 type Sentiment = 'positive' | 'negative' | 'caution' | 'neutral'
 
 interface InsightResult {
@@ -30,7 +46,12 @@ export default function DashboardInsight({ question, label }: Props) {
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(false)
 
-  function load() {
+  function load(forceRefresh = false) {
+    const cacheKey = `dash-insight:${question}`
+    if (!forceRefresh) {
+      const cached = getCached(cacheKey)
+      if (cached) { setData(cached); setLoading(false); return }
+    }
     setLoading(true)
     setError(false)
     fetch('/api/dashboard/insight', {
@@ -39,11 +60,11 @@ export default function DashboardInsight({ question, label }: Props) {
       body: JSON.stringify({ question, label }),
     })
       .then(r => r.json())
-      .then(d => { setData(d); setLoading(false) })
+      .then(d => { setData(d); setCached(cacheKey, d); setLoading(false) })
       .catch(() => { setError(true); setLoading(false) })
   }
 
-  useEffect(() => { load() }, [question]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(false) }, [question]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const cfg = data ? SENTIMENT_CONFIG[data.sentiment] : SENTIMENT_CONFIG.neutral
 
@@ -54,7 +75,7 @@ export default function DashboardInsight({ question, label }: Props) {
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
         <button
-          onClick={load}
+          onClick={() => load(true)}
           disabled={loading}
           className="flex h-6 w-6 items-center justify-center rounded-lg text-gray-300 transition hover:bg-gray-100 hover:text-gray-500 disabled:opacity-40"
           title="Refresh insight">
@@ -72,7 +93,7 @@ export default function DashboardInsight({ question, label }: Props) {
       )}
 
       {!loading && error && (
-        <p className="mt-3 text-sm text-gray-400">Could not load insight. <button onClick={load} className="text-brand underline">Try again</button></p>
+        <p className="mt-3 text-sm text-gray-400">Could not load insight. <button onClick={() => load(true)} className="text-brand underline">Try again</button></p>
       )}
 
       {!loading && data && !error && (
