@@ -114,7 +114,7 @@ export default function MarketingNav() {
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-gold px-4 py-3.5 text-sm font-bold text-navy transition hover:bg-gold-dark shadow-lg shadow-gold/20">
             Sign in to Workspace <ArrowRight className="h-4 w-4" />
           </Link>
-          <p className="text-center text-[11px] text-white/25">Powered by NyansapoAI</p>
+          <p className="text-center text-[11px] text-white/25">Powered by NyasapoAI</p>
         </div>
       </div>
     </>

@@ -83,7 +83,7 @@ export default function HomePage() {
             <div className="max-w-xl">
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-1.5 text-xs font-semibold text-gold">
                 <Building2 className="h-3.5 w-3.5" />
-                Powered by NyansapoAI · Built for Devtraco
+                Powered by NyasapoAI · Built for Devtraco
               </div>
 
               <h1 className="text-5xl font-extrabold leading-[1.1] tracking-tight xl:text-6xl">
@@ -214,7 +214,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl">
           <div className="mb-14 text-center">
             <span className="text-xs font-bold uppercase tracking-widest text-gold">
-              Why Devtraco chose NyansapoAI
+              Why Devtraco chose NyasapoAI
             </span>
             <h2 className="mt-4 text-4xl font-extrabold">
               Intelligence built for real estate

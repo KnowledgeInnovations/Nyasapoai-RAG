@@ -5,11 +5,11 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
-  title: { default: 'NyansapoAI', template: '%s | NyansapoAI' },
+  title: { default: 'NyasapoAI', template: '%s | NyasapoAI' },
   description:
     'Enterprise document intelligence — turn your internal knowledge into decision-ready insights with cited AI answers.',
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL || 'https://nyansapoai.com'
+    process.env.NEXT_PUBLIC_APP_URL || 'https://nyasapoai.com'
   ),
 }
 

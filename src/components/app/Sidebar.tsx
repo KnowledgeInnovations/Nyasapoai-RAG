@@ -286,7 +286,7 @@ export default function AppSidebar({ role, collapsed, mobileOpen, onClose, onTog
         {!collapsed && (
           <div className="mt-1 rounded-xl bg-white/5 border border-white/8 px-3 py-2 text-center">
             <p className="text-[10px] text-white/25">Powered by</p>
-            <p className="text-xs font-semibold text-white/40">NyansapoAI</p>
+            <p className="text-xs font-semibold text-white/40">NyasapoAI</p>
           </div>
         )}
       </div>

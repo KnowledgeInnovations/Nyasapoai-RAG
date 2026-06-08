@@ -191,7 +191,7 @@ export default function LoginPage() {
           {/* Hero copy */}
           <div className="mt-auto">
             <p className="mb-4 text-[11px] font-bold uppercase tracking-widest text-gold">
-              Powered by NyansapoAI
+              Powered by NyasapoAI
             </p>
             <h1 className="text-4xl font-extrabold leading-[1.15] text-white">
               Every answer.<br />
@@ -244,7 +244,7 @@ export default function LoginPage() {
 
           <p className="mt-5 text-center text-xs text-gray-400">
             Powered by{' '}
-            <span className="font-semibold text-gray-500">NyansapoAI</span>
+            <span className="font-semibold text-gray-500">NyasapoAI</span>
             {' · '}
             <Link href="/" className="text-brand hover:underline transition">
               Back to home

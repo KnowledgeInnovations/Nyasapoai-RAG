@@ -17,7 +17,7 @@ export default function MarketingFooter() {
               <img src="/devtraco-logo.png" alt="Devtraco Plus" className="h-6 w-auto object-contain" style={{ maxWidth: '110px' }} />
             </div>
             <div>
-              <p className="text-[11px] text-white/35 leading-tight">Powered by NyansapoAI · Knowledge Innovations</p>
+              <p className="text-[11px] text-white/35 leading-tight">Powered by NyasapoAI · Knowledge Innovations</p>
             </div>
           </div>
 
