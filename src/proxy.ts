@@ -10,7 +10,7 @@ export async function proxy(request: NextRequest) {
   // Strip port for local dev (localhost:3000 → localhost)
   const host = hostname.replace(`:${url.port}`, '')
 
-  // Detect subdomain — e.g. "devtraco" from devtraco.nyansapoai.com
+  // Detect subdomain — e.g. "devtraco" from devtraco.nyasapoai.com
   // In dev use: devtraco.localhost
   const subdomain = host.endsWith(`.${ROOT_DOMAIN}`)
     ? host.replace(`.${ROOT_DOMAIN}`, '')
@@ -23,7 +23,8 @@ export async function proxy(request: NextRequest) {
   // Refresh Supabase auth session
   const { supabaseResponse, user } = await updateSession(request)
 
-  // Tenant workspace routes — rewrite to /app/* internally
+  // App subdomains (e.g. devtraco.nyasapoai.com) go straight to the workspace —
+  // tenant is resolved server-side from the signed-in user's membership.
   if (isAppSubdomain) {
     // Protect all app routes — redirect to login if not authenticated
     if (!user && !url.pathname.startsWith('/auth')) {
@@ -32,12 +33,11 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // Inject tenant subdomain so pages can read it
-    const response = NextResponse.rewrite(
-      new URL(`/tenant/${subdomain}${url.pathname}`, request.url)
-    )
-    response.headers.set('x-tenant-subdomain', subdomain)
-    return response
+    // Land signed-in visitors on the dashboard instead of the marketing homepage
+    if (user && url.pathname === '/') {
+      url.pathname = '/dashboards'
+      return NextResponse.rewrite(url)
+    }
   }
 
   return supabaseResponse

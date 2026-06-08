@@ -5,6 +5,11 @@
 
 import path from 'path'
 
+// The DOMMatrix/ImageData/Path2D polyfills pdf-parse needs are installed in
+// src/instrumentation.ts, which Next.js guarantees runs to completion before
+// any request — and before pdf-parse is ever imported — so the module
+// registry never caches a failed (and permanently un-retriable) evaluation.
+
 type OfficeAst = { toText(): string }
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { parseOffice } = require('officeparser') as {
@@ -23,7 +28,8 @@ export async function extractText(buffer: Buffer, filename: string): Promise<str
   const ext = path.extname(filename).toLowerCase()
 
   if (ext === '.pdf') {
-    // pdf-parse v2 class API — new PDFParse({ data: buffer }).getText()
+    // DOMMatrix/ImageData/Path2D are polyfilled at module load (above) —
+    // pdf-parse can now run its normal text extraction.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { PDFParse } = await import('pdf-parse') as any
     const parser = new PDFParse({ data: buffer })

@@ -4,6 +4,26 @@ import { useState, useEffect } from 'react'
 import { X, FileText, Download, CheckCircle2, Clock, XCircle, Hash } from 'lucide-react'
 import type { Document } from '@/types'
 import { getCategoryByValue } from '@/lib/documentCategories'
+import PdfViewer from './PdfViewer'
+import DocxViewer from './DocxViewer'
+import SpreadsheetViewer from './SpreadsheetViewer'
+
+type FileKind = 'pdf' | 'docx' | 'spreadsheet' | 'other'
+
+function getFileKind(source?: string): FileKind {
+  switch (source?.split('.').pop()?.toLowerCase()) {
+    case 'pdf': return 'pdf'
+    case 'docx': return 'docx'
+    case 'xlsx': case 'xls': case 'csv': case 'ods': return 'spreadsheet'
+    default: return 'other'
+  }
+}
+
+function tabButtonClass(active: boolean) {
+  return `rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
+    active ? 'bg-gray-900 text-white' : 'border border-gray-200 text-gray-500 hover:bg-gray-50'
+  }`
+}
 
 interface Chunk { chunk_index: number; chunk_text: string }
 
@@ -47,11 +67,13 @@ export default function DocumentPreview({ docId, onClose }: Props) {
   const [data,    setData]    = useState<PreviewData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState(false)
+  const [view,    setView]    = useState<'original' | 'indexed'>('original')
 
   useEffect(() => {
-    if (!docId) { setData(null); setError(false); return }
+    if (!docId) return
     setLoading(true)
     setError(false)
+    setView('original')
     fetch(`/api/documents/preview?id=${docId}`)
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(d => setData(d))
@@ -69,6 +91,10 @@ export default function DocumentPreview({ docId, onClose }: Props) {
     .join('\n\n') ?? ''
 
   const size = formatBytes(doc?.file_size as number | undefined)
+  const fileKind = getFileKind(doc?.source)
+  const downloadUrl = data?.downloadUrl ?? null
+  const canViewOriginal = fileKind !== 'other' && !!downloadUrl
+  const activeView: 'original' | 'indexed' = canViewOriginal ? view : 'indexed'
 
   return (
     <>
@@ -80,7 +106,7 @@ export default function DocumentPreview({ docId, onClose }: Props) {
 
       {/* Panel */}
       <div className="fixed bottom-0 right-0 z-50 flex flex-col bg-white shadow-2xl
-                      w-full md:w-[500px] md:h-full md:border-l md:border-gray-200
+                      w-full md:w-[640px] md:h-full md:border-l md:border-gray-200
                       h-[88vh] rounded-t-3xl md:rounded-none">
 
         {/* ── Header ─────────────────────────────────────────── */}
@@ -149,48 +175,73 @@ export default function DocumentPreview({ docId, onClose }: Props) {
         )}
 
         {/* ── Content ─────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto px-5 py-5">
+        <div className="flex-1 min-h-0 flex flex-col px-5 py-5">
           {loading ? (
-            <div className="space-y-3 animate-pulse">
+            <div className="space-y-3 animate-pulse overflow-y-auto">
               {[95, 88, 100, 82, 91, 75, 96, 85].map((w, i) => (
                 <div key={i} className="h-3 rounded-full bg-gray-100" style={{ width: `${w}%` }} />
               ))}
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center h-full text-center py-12">
+            <div className="flex flex-col items-center justify-center h-full text-center py-12 overflow-y-auto">
               <XCircle className="h-10 w-10 text-red-300 mb-3" />
               <p className="text-sm font-medium text-gray-500">Failed to load preview</p>
               <p className="text-xs text-gray-400 mt-1">Try again or download the original file.</p>
             </div>
-          ) : fullText ? (
+          ) : (
             <>
-              <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                Indexed content
-              </p>
-              <div className="rounded-2xl border border-gray-100 bg-gray-50 px-5 py-4">
-                <p className="text-sm leading-[1.75] text-gray-700 whitespace-pre-wrap">
-                  {fullText}
-                </p>
+              {canViewOriginal && fullText && (
+                <div className="mb-3 flex shrink-0 gap-1">
+                  <button onClick={() => setView('original')} className={tabButtonClass(activeView === 'original')}>
+                    Original
+                  </button>
+                  <button onClick={() => setView('indexed')} className={tabButtonClass(activeView === 'indexed')}>
+                    Indexed text
+                  </button>
+                </div>
+              )}
+
+              <div className="flex-1 min-h-0">
+                {activeView === 'original' && downloadUrl ? (
+                  <>
+                    {fileKind === 'pdf' && <PdfViewer key={docId} url={downloadUrl} />}
+                    {fileKind === 'docx' && <DocxViewer key={docId} url={downloadUrl} />}
+                    {fileKind === 'spreadsheet' && <SpreadsheetViewer key={docId} url={downloadUrl} />}
+                  </>
+                ) : fullText ? (
+                  <div className="h-full overflow-y-auto">
+                    <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                      Indexed content
+                    </p>
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50 px-5 py-4">
+                      <p className="text-sm leading-[1.75] text-gray-700 whitespace-pre-wrap">
+                        {fullText}
+                      </p>
+                    </div>
+                  </div>
+                ) : doc?.status === 'processing' ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                    <Clock className="h-10 w-10 text-amber-300 mb-3 animate-spin" />
+                    <p className="text-sm font-medium text-gray-500">Processing document…</p>
+                    <p className="text-xs text-gray-400 mt-1">Content will be available shortly.</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                    <FileText className="h-10 w-10 text-gray-300 mb-3" />
+                    <p className="text-sm font-medium text-gray-500">No content available</p>
+                  </div>
+                )}
               </div>
             </>
-          ) : doc?.status === 'processing' ? (
-            <div className="flex flex-col items-center justify-center h-full text-center py-12">
-              <Clock className="h-10 w-10 text-amber-300 mb-3 animate-spin" />
-              <p className="text-sm font-medium text-gray-500">Processing document…</p>
-              <p className="text-xs text-gray-400 mt-1">Content will be available shortly.</p>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center py-12">
-              <FileText className="h-10 w-10 text-gray-300 mb-3" />
-              <p className="text-sm font-medium text-gray-500">No content available</p>
-            </div>
           )}
         </div>
 
         {/* ── Footer ─────────────────────────────────────────── */}
         <div className="shrink-0 border-t border-gray-100 px-5 py-3 flex items-center justify-between">
           <p className="text-[11px] text-gray-400">
-            This is the text the AI has indexed from this document.
+            {activeView === 'original'
+              ? 'Original document, rendered in your browser.'
+              : 'This is the text the AI has indexed from this document.'}
           </p>
           <button
             onClick={onClose}

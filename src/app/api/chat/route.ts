@@ -62,6 +62,52 @@ function parseDelimited(text: string) {
   }
 }
 
+const HIGHLIGHT_STOPWORDS = new Set([
+  'the','a','an','of','in','on','at','to','for','and','or','is','are','was',
+  'were','what','which','who','whom','how','why','when','where','do','does',
+  'did','this','that','these','those','with','from','by','as','it','its','be',
+  'been','being','have','has','had','will','would','could','should','can',
+  'may','might','we','you','i','he','she','they','them','their','our','your',
+  'my','his','her','not','no','yes','about','into','than','then','there',
+  'here','also','any','all','some','such','first','last','give','show','tell',
+  'find','get','document','section',
+])
+
+// Finds the sentence within a chunk that best overlaps the user's question,
+// so the source viewer can highlight "the part we were looking for" instead
+// of dumping the whole excerpt and leaving the user to hunt for it.
+function findHighlightSpan(chunkText: string, query: string): [number, number] | null {
+  const tokens = (query.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [])
+    .filter(t => !HIGHLIGHT_STOPWORDS.has(t))
+  if (!tokens.length) return null
+
+  // Every chunk is prepended with "[Document: Title]\n" at index time (see
+  // documents/upload/route.ts) so filename searches work — skip it here, since
+  // it shares words with the query (e.g. "budget", "2008") but isn't content.
+  const prefixMatch = chunkText.match(/^\[Document:[^\]]*\]\n?/)
+  const offset = prefixMatch ? prefixMatch[0].length : 0
+  const body   = chunkText.slice(offset)
+
+  // Require overlap on at least two distinct query terms (or all of them, for
+  // very short queries) so a single incidental word match — e.g. "budget"
+  // appearing in an unrelated number table — doesn't get highlighted.
+  const minScore = Math.min(2, tokens.length)
+
+  const sentenceRe = /[^.!?\n]+[.!?]?/g
+  let best: { start: number; end: number; score: number } | null = null
+  let match: RegExpExecArray | null
+  while ((match = sentenceRe.exec(body))) {
+    const sentence = match[0]
+    if (sentence.trim().length < 12) continue
+    const lower = sentence.toLowerCase()
+    const score = tokens.reduce((acc, t) => acc + (lower.includes(t) ? 1 : 0), 0)
+    if (score >= minScore && (!best || score > best.score)) {
+      best = { start: offset + match.index, end: offset + match.index + sentence.length, score }
+    }
+  }
+  return best ? [best.start, best.end] : null
+}
+
 function sseHeaders() {
   return { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no' }
 }
@@ -401,6 +447,7 @@ IMPORTANT: If the user asks whether a file or category of document exists, CHECK
               document_title: docTitle ?? 'Document',
               chunk_text: c.chunk_text,
               relevance_score: c.similarity,
+              highlight: findHighlightSpan(c.chunk_text, query),
             }
           })
 

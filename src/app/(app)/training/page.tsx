@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import { getMembership, createClient } from '@/lib/supabase/server'
+import { getMembership } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import TrainingClient from '@/components/app/TrainingClient'
 
@@ -30,23 +30,33 @@ export default async function TrainingPage() {
   const membership = await getMembership()
   if (!membership || membership.role !== 'admin') redirect('/ask')
 
-  const supabase = await createClient()
-  const service  = svc()
+  const service = svc()
   const tid      = membership.tenant_id
 
-  // Fetch all documents + their chunk counts + last trained timestamp
-  const [{ data: docs }, { data: allChunks }] = await Promise.all([
-    service
-      .from('documents')
-      .select('id, title, source, department, status, file_path, created_at')
-      .eq('tenant_id', tid)
-      .order('created_at', { ascending: false }),
-    service
+  // Fetch all documents
+  const { data: docs } = await service
+    .from('documents')
+    .select('id, title, source, department, status, file_path, created_at')
+    .eq('tenant_id', tid)
+    .order('created_at', { ascending: false })
+
+  // Fetch every chunk row for the tenant — paginated, since Supabase caps
+  // unbounded selects at 1000 rows, which would silently hide chunk counts
+  // for documents whose chunks fall outside that window (i.e. the most
+  // recently trained ones, making them look "Not Trained").
+  const PAGE_SIZE = 1000
+  const allChunks: { document_id: string; created_at: string }[] = []
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data: page } = await service
       .from('document_chunks')
       .select('document_id, created_at')
       .eq('tenant_id', tid)
-      .order('created_at', { ascending: true }),
-  ])
+      .order('created_at', { ascending: true })
+      .range(from, from + PAGE_SIZE - 1)
+    if (!page?.length) break
+    allChunks.push(...page)
+    if (page.length < PAGE_SIZE) break
+  }
 
   // Build chunk count + last trained map
   const chunkMap = new Map<string, { count: number; lastAt: string }>()

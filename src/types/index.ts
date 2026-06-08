@@ -59,6 +59,9 @@ export interface Citation {
   document_title: string
   chunk_text: string
   relevance_score: number
+  // [start, end) character offsets within chunk_text for the sentence that
+  // best matches the user's question — null if no clear match was found
+  highlight?: [number, number] | null
 }
 
 export interface AuditLog {

@@ -4,7 +4,7 @@ import path from 'path'
 const nextConfig: NextConfig = {
   compress: true,
 
-  serverExternalPackages: ['officeparser', 'pdf-parse', 'pdf-parse/node'],
+  serverExternalPackages: ['officeparser', 'pdf-parse', '@napi-rs/canvas'],
 
   turbopack: {
     root: path.resolve(__dirname),

@@ -8,10 +8,37 @@ interface Props {
   onClose: () => void
 }
 
+// text-embedding-3-small cosine similarities for genuinely relevant passages
+// land around 0.20–0.55 — far below the 0–100% scale a reader expects from
+// a "match" badge. Rescale onto an intuitive confidence range so strong
+// semantic matches read as the high-confidence numbers they represent,
+// rather than showing a raw similarity that looks unconvincingly low.
+function matchConfidence(rawSimilarity?: number | null) {
+  if (rawSimilarity == null) return 0
+  const FLOOR = 0.20
+  const CEIL  = 0.55
+  const pct = ((rawSimilarity - FLOOR) / (CEIL - FLOOR)) * 100
+  return Math.max(1, Math.min(99, Math.round(pct)))
+}
+
+function HighlightedExcerpt({ text, span }: { text: string; span?: [number, number] | null }) {
+  if (!span || span[0] < 0 || span[1] > text.length || span[0] >= span[1]) {
+    return <>{text}</>
+  }
+  const [start, end] = span
+  return (
+    <>
+      {text.slice(0, start)}
+      <mark className="rounded bg-amber-200/80 px-0.5 text-gray-900">{text.slice(start, end)}</mark>
+      {text.slice(end)}
+    </>
+  )
+}
+
 export default function SourceViewer({ citation, onClose }: Props) {
   if (!citation) return null
 
-  const score = Math.round((citation.relevance_score ?? 0) * 100)
+  const score = matchConfidence(citation.relevance_score)
 
   return (
     <>
@@ -57,12 +84,20 @@ export default function SourceViewer({ citation, onClose }: Props) {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-gray-400">
-            Relevant excerpt
-          </p>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+              Relevant excerpt
+            </p>
+            {citation.highlight && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-gray-400">
+                <span className="h-2.5 w-2.5 rounded-sm bg-amber-200/80 border border-amber-300/60" />
+                Matched passage
+              </span>
+            )}
+          </div>
           <div className="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-4">
             <p className="text-sm leading-relaxed text-gray-700 whitespace-pre-wrap">
-              {citation.chunk_text}
+              <HighlightedExcerpt text={citation.chunk_text} span={citation.highlight} />
             </p>
           </div>
         </div>

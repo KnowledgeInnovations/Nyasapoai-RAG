@@ -85,11 +85,13 @@ create table public.document_chunks (
   created_at   timestamptz not null default now()
 );
 
--- Index for fast vector similarity search
-create index document_chunks_embedding_idx
-  on public.document_chunks
-  using ivfflat (embedding vector_cosine_ops)
-  with (lists = 100);
+-- No ANN index on `embedding` — at our current scale (low thousands of
+-- chunks) an exact sequential scan is a few milliseconds and guarantees
+-- correct recall. An ivfflat index with lists=100 was tried and removed
+-- (see migrations/003_fix_vector_search_recall.sql): with so few rows per
+-- cluster, semantically relevant chunks were routinely missed. Add a
+-- properly-sized HNSW index only once the corpus reaches the tens of
+-- thousands of chunks.
 
 -- ─────────────────────────────────────────
 -- CONVERSATIONS
