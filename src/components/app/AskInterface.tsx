@@ -6,6 +6,7 @@ import {
   AlertTriangle, CheckCircle2, Paperclip,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { uploadDocument } from '@/lib/uploadDocument'
 import type { RAGResponse, Citation } from '@/types'
 import MessageContent from './MessageContent'
 import SourceViewer from './SourceViewer'
@@ -276,20 +277,17 @@ export default function AskInterface({ userName = 'there' }: { userName?: string
     e.target.value = ''
     setMessages(prev => [...prev, { role: 'user', text: `📎 ${file.name}` }])
     setUploading(true)
-    const fd = new FormData()
-    fd.append('file', file)
     try {
-      const res = await fetch('/api/documents/upload', { method: 'POST', body: fd })
-      if (res.ok) {
+      const { document, error } = await uploadDocument(file)
+      if (document) {
         setMessages(prev => [...prev, {
           role: 'ai',
           text: `Great news! I've successfully processed **${file.name}**. You can now ask me questions about its contents. 🎉`,
         }])
       } else {
-        const err = await res.json().catch(() => ({}))
-        const msg = err.error === 'Insufficient permissions'
+        const msg = error === 'Insufficient permissions'
           ? "I'm sorry, your account doesn't have permission to upload documents. Please contact your workspace admin."
-          : `I had trouble processing that file. ${err.error ?? 'Please try again from the Documents section.'}`
+          : `I had trouble processing that file. ${error ?? 'Please try again from the Documents section.'}`
         setMessages(prev => [...prev, { role: 'ai', text: msg }])
       }
     } catch {

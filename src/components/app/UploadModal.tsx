@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { X, Upload, FileText, CheckCircle2, AlertCircle, Loader2, Paperclip } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { uploadDocument } from '@/lib/uploadDocument'
 import { SENSITIVITIES } from '@/lib/documentCategories'
 import type { Category } from '@/lib/documentCategories'
 import type { Document } from '@/types'
@@ -75,23 +76,20 @@ export default function UploadModal({ onClose, onUploaded, categories }: Props) 
 
       setFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'uploading' } : f))
 
-      const fd = new FormData()
-      fd.append('file', item.file)
-      fd.append('title', item.title)
-      fd.append('department', category)
-      fd.append('sensitivity', sensitivity)
-
       try {
-        const res  = await fetch('/api/documents/upload', { method: 'POST', body: fd })
-        const data = await res.json()
-        if (res.ok) {
+        const { document, error } = await uploadDocument(item.file, {
+          title: item.title,
+          department: category,
+          sensitivity,
+        })
+        if (document) {
           setFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'done' } : f))
-          if (data.document) newDocs.push(data.document as Document)
+          newDocs.push(document)
         } else {
-          setFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'error', error: data.error ?? 'Upload failed' } : f))
+          setFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'error', error: error ?? 'Upload failed' } : f))
         }
-      } catch {
-        setFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'error', error: 'Network error' } : f))
+      } catch (err) {
+        setFiles(prev => prev.map((f, idx) => idx === i ? { ...f, status: 'error', error: (err as Error)?.message || 'Network error' } : f))
       }
     }
 

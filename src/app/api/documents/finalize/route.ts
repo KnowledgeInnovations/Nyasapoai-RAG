@@ -3,7 +3,25 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { extractText, chunkText, embedBatch, EMBED_BATCH } from '@/lib/documentProcess'
 
-const MAX_SIZE = 500 * 1024 * 1024 // 500 MB
+export const maxDuration = 300 // 5 min — extraction + embedding can take a while for large documents
+
+function svc() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
+
+interface FinalizeBody {
+  path?:             string
+  title?:            string
+  department?:       string | null
+  sensitivity?:      string
+  originalFilename?: string
+  fileSize?:         number
+  mimeType?:         string
+}
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -21,57 +39,36 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
   }
 
-  const formData   = await request.formData()
-  const file        = formData.get('file') as File | null
-  const department  = (formData.get('department')  as string) || null
-  const sensitivity = (formData.get('sensitivity') as string) || 'internal'
-  const customTitle = (formData.get('title')       as string) || ''
-
-  if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
-  if (file.size > MAX_SIZE) {
-    return NextResponse.json({ error: 'File exceeds 500 MB limit' }, { status: 400 })
+  const body = await request.json() as FinalizeBody
+  const { path, originalFilename } = body
+  if (!path || !originalFilename) {
+    return NextResponse.json({ error: 'Missing upload path or filename' }, { status: 400 })
+  }
+  // The signed-upload path is generated server-side as `${tenant_id}/...` —
+  // reject anything else so a forged path can't attach another tenant's file.
+  if (!path.startsWith(`${membership.tenant_id}/`)) {
+    return NextResponse.json({ error: 'Invalid upload path' }, { status: 400 })
   }
 
-  const buffer = Buffer.from(await file.arrayBuffer())
+  const serviceClient = svc()
+  const department  = body.department ?? null
+  const sensitivity = body.sensitivity || 'internal'
+  const docTitle    = body.title?.trim() || originalFilename.replace(/\.[^.]+$/, '')
+  const mimeType    = body.mimeType || 'application/octet-stream'
 
-  // Upload raw file to Supabase Storage (service role bypasses RLS)
-  const serviceClient = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  )
-
-  // Ensure the bucket exists (no-op if it already does)
-  await serviceClient.storage.createBucket('documents', { public: false }).catch(() => {})
-
-  // Sanitise filename — replace spaces/special chars so the storage path is always valid
-  const safeFilename = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')
-  const storagePath  = `${membership.tenant_id}/${Date.now()}-${safeFilename}`
-
-  const { error: storageError } = await serviceClient.storage
-    .from('documents')
-    .upload(storagePath, buffer, { contentType: file.type || 'application/octet-stream' })
-
-  if (storageError) {
-    console.error('Storage error:', storageError)
-    return NextResponse.json({ error: `File storage failed: ${storageError.message}` }, { status: 500 })
-  }
-
-  // Insert document record with status 'processing'
-  const docTitle = customTitle.trim() || file.name.replace(/\.[^.]+$/, '')
   const { data: document, error: docError } = await serviceClient
     .from('documents')
     .insert({
       tenant_id:   membership.tenant_id,
       uploaded_by: user.id,
       title:       docTitle,
-      source:      file.name,
+      source:      originalFilename,
       department,
       sensitivity,
       status:      'processing',
-      file_path:   storagePath,
-      file_size:   file.size,
-      mime_type:   file.type || 'application/octet-stream',
+      file_path:   path,
+      file_size:   body.fileSize ?? 0,
+      mime_type:   mimeType,
     })
     .select()
     .single()
@@ -82,10 +79,14 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const { data: blob, error: dlErr } = await serviceClient.storage.from('documents').download(path)
+    if (dlErr || !blob) throw new Error(`Could not read uploaded file: ${dlErr?.message ?? 'unknown error'}`)
+    const buffer = Buffer.from(await blob.arrayBuffer())
+
     // Step 1: extract text
     let text: string
     try {
-      text = await extractText(buffer, file.name)
+      text = await extractText(buffer, originalFilename)
     } catch (extractErr) {
       console.error('Text extraction error:', extractErr)
       await serviceClient.from('documents').update({ status: 'failed' }).eq('id', document.id)
@@ -129,7 +130,7 @@ export async function POST(request: NextRequest) {
           chunk_text:  chunkText,
           chunk_index: start + j,
           embedding:   embeddings[j],
-          metadata: { source: file.name, chunk_index: start + j, total_chunks: chunks.length },
+          metadata: { source: originalFilename, chunk_index: start + j, total_chunks: chunks.length },
         }))
       )
     }
