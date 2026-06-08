@@ -180,11 +180,10 @@ export default function LoginPage() {
         <div className="relative z-10 flex flex-1 flex-col">
           {/* Logo */}
           <Link href="/" className="inline-flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold shadow-xl shadow-gold/30">
-              <span className="text-[11px] font-black text-navy">DT</span>
+            <div className="flex items-center justify-center rounded-xl bg-white px-2 py-1.5 shadow-xl overflow-hidden">
+              <img src="/devtraco-logo.png" alt="Devtraco Plus" className="h-7 w-auto object-contain" style={{ maxWidth: '110px' }} />
             </div>
             <div>
-              <p className="text-sm font-extrabold text-white">Devtraco Plus</p>
               <p className="text-[11px] text-white/40 leading-tight">Intelligence workspace</p>
             </div>
           </Link>
@@ -226,12 +225,8 @@ export default function LoginPage() {
 
         {/* Mobile-only logo */}
         <Link href="/" className="mb-8 inline-flex items-center gap-3 lg:hidden">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy shadow-lg">
-            <span className="text-[11px] font-black text-gold">DT</span>
-          </div>
-          <div>
-            <p className="text-sm font-extrabold text-gray-900">Devtraco Plus</p>
-            <p className="text-[11px] text-gray-400">Intelligence workspace</p>
+          <div className="flex items-center justify-center rounded-xl bg-white border border-gray-200 px-3 py-2 shadow-md overflow-hidden">
+            <img src="/devtraco-logo.png" alt="Devtraco Plus" className="h-7 w-auto object-contain" style={{ maxWidth: '120px' }} />
           </div>
         </Link>
 

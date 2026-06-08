@@ -18,12 +18,20 @@ interface Message {
   response?: RAGResponse
 }
 
+interface StoredMessage {
+  role: 'user' | 'ai'
+  text: string
+  risks?: string[]
+  recommendations?: string[]
+}
+
 interface HistoryItem {
   id: string
   query: string
   response: string
   risks: string[]
   recommendations: string[]
+  messages: StoredMessage[] | null
   created_at: string
 }
 
@@ -214,21 +222,40 @@ export default function AskInterface({ userName = 'there' }: { userName?: string
   useEffect(() => {
     const handler = (e: Event) => {
       const item = (e as CustomEvent<HistoryItem>).detail
-      setSessionConvId(item.id)  // mark as existing session — don't create new sidebar entry
-      setMessages([
-        { role: 'user', text: item.query },
-        {
-          role: 'ai',
-          text: item.response,
-          response: {
-            answer: item.response,
-            citations: [],
-            risks: item.risks ?? [],
-            recommendations: item.recommendations ?? [],
-            confidence_score: 0,
+      setSessionConvId(item.id)
+
+      if (item.messages && item.messages.length > 0) {
+        // Restore full multi-turn thread from the DB messages column
+        setMessages(item.messages.map(m => ({
+          role: m.role,
+          text: m.text,
+          ...(m.role === 'ai' && {
+            response: {
+              answer:           m.text,
+              citations:        [],
+              risks:            m.risks ?? [],
+              recommendations:  m.recommendations ?? [],
+              confidence_score: 0,
+            },
+          }),
+        })))
+      } else {
+        // Fallback for old conversations recorded before this migration
+        setMessages([
+          { role: 'user', text: item.query },
+          {
+            role: 'ai',
+            text: item.response,
+            response: {
+              answer:           item.response,
+              citations:        [],
+              risks:            item.risks ?? [],
+              recommendations:  item.recommendations ?? [],
+              confidence_score: 0,
+            },
           },
-        },
-      ])
+        ])
+      }
     }
     window.addEventListener('open-conversation', handler)
     return () => window.removeEventListener('open-conversation', handler)
@@ -295,7 +322,7 @@ export default function AskInterface({ userName = 'there' }: { userName?: string
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: q, newSession: isNewSession, history }),
+        body: JSON.stringify({ query: q, newSession: isNewSession, history, convId: sessionConvId }),
       })
       if (!res.ok || !res.body) throw new Error('Request failed')
 
@@ -334,24 +361,19 @@ export default function AskInterface({ userName = 'there' }: { userName?: string
           }
 
           if (event.done) {
-            // Replace streaming message with fully structured response
-            setMessages(prev => [
-              ...prev.slice(0, -1),
-              {
-                role: 'ai',
-                text: event.answer ?? '',
-                streaming: false,
-                response: {
-                  answer:          event.answer ?? '',
-                  citations:       event.citations ?? [],
-                  risks:           event.risks ?? [],
-                  recommendations: event.recommendations ?? [],
-                  confidence_score: event.confidence_score ?? 0.85,
-                },
+            const finalMsg: Message = {
+              role: 'ai',
+              text: event.answer ?? '',
+              streaming: false,
+              response: {
+                answer:           event.answer ?? '',
+                citations:        event.citations ?? [],
+                risks:            event.risks ?? [],
+                recommendations:  event.recommendations ?? [],
+                confidence_score: event.confidence_score ?? 0.85,
               },
-            ])
-            // Only update sidebar on the FIRST message of a session.
-            // Subsequent messages in the same chat don't add new sidebar entries.
+            }
+            setMessages(prev => [...prev.slice(0, -1), finalMsg])
             if (isNewSession && event.convId) {
               setSessionConvId(event.convId)
               window.dispatchEvent(new CustomEvent('refresh-chat-history'))

@@ -103,6 +103,7 @@ create table public.conversations (
   confidence_score numeric(3,2),
   risks            text[],
   recommendations  text[],
+  messages         jsonb not null default '[]'::jsonb,
   created_at       timestamptz not null default now()
 );
 
@@ -207,6 +208,9 @@ create policy "conversations_select" on public.conversations
 create policy "conversations_insert" on public.conversations
   for insert with check (auth.uid() = user_id);
 
+create policy "conversations_update_own" on public.conversations
+  for update using (auth.uid() = user_id);
+
 -- Citations: accessible if the conversation is yours
 create policy "citations_select" on public.citations
   for select using (
@@ -226,6 +230,23 @@ create policy "audit_logs_select" on public.audit_logs
         and role = 'senior'
     )
   );
+
+-- ─────────────────────────────────────────
+-- CONVERSATION MESSAGE APPEND
+-- ─────────────────────────────────────────
+create or replace function public.append_conversation_messages(
+  p_conversation_id  uuid,
+  p_user_id          uuid,
+  p_new_messages     jsonb
+) returns void
+language plpgsql security definer as $$
+begin
+  update public.conversations
+  set    messages = messages || p_new_messages
+  where  id      = p_conversation_id
+    and  user_id = p_user_id;
+end;
+$$;
 
 -- ─────────────────────────────────────────
 -- VECTOR SIMILARITY SEARCH FUNCTION

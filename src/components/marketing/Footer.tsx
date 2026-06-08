@@ -13,11 +13,10 @@ export default function MarketingFooter() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           {/* Brand */}
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gold shadow-lg shadow-gold/20">
-              <span className="text-xs font-black text-navy">DT</span>
+            <div className="flex items-center justify-center rounded-xl bg-white px-2 py-1 shadow-lg overflow-hidden">
+              <img src="/devtraco-logo.png" alt="Devtraco Plus" className="h-6 w-auto object-contain" style={{ maxWidth: '110px' }} />
             </div>
             <div>
-              <p className="text-sm font-extrabold text-white">Devtraco Plus</p>
               <p className="text-[11px] text-white/35 leading-tight">Powered by NyansapoAI · Knowledge Innovations</p>
             </div>
           </div>

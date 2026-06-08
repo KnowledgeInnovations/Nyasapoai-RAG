@@ -168,16 +168,15 @@ export default function AppSidebar({ role, collapsed, mobileOpen, onClose, onTog
       {/* ── Header ─────────────────────────────────────────── */}
       <div className="flex h-16 shrink-0 items-center border-b border-white/10 px-3">
         {collapsed ? (
-          <div className="mx-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gold shadow-lg shadow-gold/25">
-            <span className="text-[11px] font-black text-navy">DT</span>
+          <div className="mx-auto flex shrink-0 items-center justify-center rounded-lg bg-white px-1.5 py-1 shadow-lg overflow-hidden">
+            <img src="/devtraco-logo.png" alt="Devtraco Plus" className="h-5 w-auto object-contain" style={{ maxWidth: '40px' }} />
           </div>
         ) : (
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gold shadow-lg shadow-gold/25">
-              <span className="text-[11px] font-black text-navy">DT</span>
+            <div className="flex shrink-0 items-center justify-center rounded-lg bg-white px-2 py-1 shadow-lg overflow-hidden">
+              <img src="/devtraco-logo.png" alt="Devtraco Plus" className="h-6 w-auto object-contain" style={{ maxWidth: '110px' }} />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-bold text-white">Devtraco Plus</p>
               <p className="text-[10px] leading-tight text-white/35">Intelligence workspace</p>
             </div>
             <button onClick={onClose}

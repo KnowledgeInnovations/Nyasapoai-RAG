@@ -43,10 +43,9 @@ export default function MarketingNav() {
       )}>
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 md:px-8">
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold shadow-lg shadow-gold/30">
-              <span className="text-[11px] font-black text-navy">DT</span>
+            <div className="flex items-center justify-center rounded-lg bg-white px-2 py-1 shadow-lg shadow-white/10 overflow-hidden">
+              <img src="/devtraco-logo.png" alt="Devtraco Plus" className="h-6 w-auto object-contain" style={{ maxWidth: '120px' }} />
             </div>
-            <span className="hidden sm:block text-sm font-extrabold text-white tracking-tight">Devtraco Plus</span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-1">
@@ -89,10 +88,9 @@ export default function MarketingNav() {
         {/* Header */}
         <div className="flex h-16 shrink-0 items-center justify-between px-5 border-b border-white/10">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold">
-              <span className="text-[11px] font-black text-navy">DT</span>
+            <div className="flex items-center justify-center rounded-lg bg-white px-2 py-1 shadow-lg overflow-hidden">
+              <img src="/devtraco-logo.png" alt="Devtraco Plus" className="h-6 w-auto object-contain" style={{ maxWidth: '120px' }} />
             </div>
-            <span className="text-sm font-extrabold text-white">Devtraco Plus</span>
           </div>
           <button onClick={() => setOpen(false)} aria-label="Close menu"
             className="flex h-9 w-9 items-center justify-center rounded-xl text-white/50 hover:bg-white/10 hover:text-white transition">

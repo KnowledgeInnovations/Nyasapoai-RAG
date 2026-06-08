@@ -31,6 +31,8 @@ Rules:
 - Never invent facts not present in the excerpts or inventory
 - Be direct and specific — give names, numbers, and categories from the documents
 - If no relevant excerpts were found but a document exists in the inventory, acknowledge the document exists and suggest the user ask more specific questions about its content
+- When the user asks to "open", "show", "view", or "read" a document — you cannot open files directly in this chat. Respond by summarising the key contents you have from the document excerpts, and tell the user they can view the full document in the Documents section.
+- RECOMMENDATIONS must be specific and actionable — only include them if there is a genuine next step (e.g. "Review clause 4.2 on payment terms before signing"). Never add generic filler like "feel free to ask if you have more questions" as a recommendation.
 
 Format your response EXACTLY like this (no other format):
 
@@ -41,7 +43,7 @@ Your detailed answer here with inline citations like [1]
 • risk 1 (write "None identified" if there are no risks)
 
 [RECS]
-• recommendation 1 (omit bullet if not applicable)`
+• recommendation 1 (omit this section entirely if there are no specific actionable recommendations)`
 
 function parseDelimited(text: string) {
   const answerMatch = text.match(/\[ANSWER\]([\s\S]*?)(?=\n\[RISKS\]|\n\[RECS\]|$)/)
@@ -97,7 +99,7 @@ export async function GET() {
 
   const { data } = await supabase
     .from('conversations')
-    .select('id, query, response, risks, recommendations, created_at')
+    .select('id, query, response, risks, recommendations, messages, created_at')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(60)
@@ -144,7 +146,7 @@ export async function POST(request: NextRequest) {
   if (!membership) return new Response('No workspace',  { status: 403 })
 
   const supabase = await createClient()
-  const { query, newSession = true, history = [] } = await request.json()
+  const { query, newSession = true, history = [], convId: existingConvId = null } = await request.json()
   if (!query?.trim()) return new Response('Query required', { status: 400 })
 
   // Full conversation history — no cap, AI always has the complete context
@@ -155,20 +157,43 @@ export async function POST(request: NextRequest) {
   const enc = new TextEncoder()
   const tenantId = membership.tenant_id
 
-  // Save a conversation and return the DB-generated id (never pass a custom id)
+  type StoredMessage = { role: string; text: string; risks?: string[]; recommendations?: string[] }
+
+  // Insert a new conversation row (first message of a session).
   async function saveConv(answer: string, risks: string[], recommendations: string[], confidence = 0.85): Promise<string | null> {
     try {
+      const messages: StoredMessage[] = [
+        { role: 'user', text: query },
+        { role: 'ai',   text: answer, risks, recommendations },
+      ]
       const { data, error } = await supabase
         .from('conversations')
         .insert({
           user_id: user!.id, tenant_id: tenantId,
           query, response: answer, confidence_score: confidence, risks, recommendations,
+          messages,
         })
         .select('id')
         .single()
       if (error) { console.error('Conv save error:', error.message); return null }
       return data?.id ?? null
     } catch (e) { console.error('Conv save failed:', e); return null }
+  }
+
+  // Append a user+AI pair to an existing conversation (subsequent messages).
+  async function appendConv(id: string, answer: string, risks: string[], recommendations: string[]): Promise<void> {
+    try {
+      const newMessages: StoredMessage[] = [
+        { role: 'user', text: query },
+        { role: 'ai',   text: answer, risks, recommendations },
+      ]
+      const { error } = await supabase.rpc('append_conversation_messages', {
+        p_conversation_id: id,
+        p_user_id:         user!.id,
+        p_new_messages:    newMessages,
+      })
+      if (error) console.error('Conv append error:', error.message)
+    } catch (e) { console.error('Conv append failed:', e) }
   }
 
   /* ── Small talk shortcut ──────────────────────────────────── */
@@ -190,8 +215,14 @@ export async function POST(request: NextRequest) {
     const msg = convData.choices?.[0]?.message?.content?.trim()
       ?? `You're welcome, ${firstName}! Let me know whenever you have a question about your documents.`
 
-    const title  = makeTitle(query)
-    const convId = newSession ? await saveConv(msg, [], [], 1) : null
+    const title = makeTitle(query)
+    let convId: string | null = null
+    if (newSession) {
+      convId = await saveConv(msg, [], [], 1)
+    } else if (existingConvId) {
+      convId = existingConvId
+      await appendConv(existingConvId, msg, [], [])
+    }
 
     return new Response(
       new ReadableStream({ async start(c) {
@@ -253,8 +284,14 @@ IMPORTANT: If the user asks whether a file or category of document exists, CHECK
       const msg = noDocData.choices?.[0]?.message?.content?.trim()
         ?? "I couldn't find relevant content for that query. Check the Documents section to see what has been uploaded, or try rephrasing your question."
 
-      const title  = makeTitle(query)
-      const convId = newSession ? await saveConv(msg, [], [], 0.3) : null
+      const title = makeTitle(query)
+      let convId: string | null = null
+      if (newSession) {
+        convId = await saveConv(msg, [], [], 0.3)
+      } else if (existingConvId) {
+        convId = existingConvId
+        await appendConv(existingConvId, msg, [], [])
+      }
 
       return new Response(
         new ReadableStream({ async start(c) {
@@ -321,16 +358,19 @@ IMPORTANT: If the user asks whether a file or category of document exists, CHECK
 
           const { answer, risks, recommendations } = parseDelimited(fullText)
 
-          // Only save on the first message of a session (newSession=true).
-          // Subsequent messages in the same chat don't create new sidebar entries.
           let convId: string | null = null
           if (newSession) {
             try {
+              const messages = [
+                { role: 'user', text: query },
+                { role: 'ai',   text: answer, risks, recommendations },
+              ]
               const { data: conv, error: convErr } = await supabase
                 .from('conversations')
                 .insert({
                   user_id: user!.id, tenant_id: tenantId,
                   query, response: answer, confidence_score: 0.85, risks, recommendations,
+                  messages,
                 })
                 .select('id')
                 .single()
@@ -344,6 +384,9 @@ IMPORTANT: If the user asks whether a file or category of document exists, CHECK
                 )
               }
             } catch (e) { console.error('Save failed:', e) }
+          } else if (existingConvId) {
+            convId = existingConvId
+            await appendConv(existingConvId, answer, risks, recommendations)
           }
 
           // Build citation objects with the real DB-generated convId
