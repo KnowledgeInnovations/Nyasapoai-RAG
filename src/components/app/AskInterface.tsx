@@ -47,9 +47,9 @@ function getInitials(name: string) {
 /* ── Shimmer skeleton ────────────────────────────────────── */
 function ThinkingSkeleton() {
   return (
-    <div className="flex gap-4">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-navy shadow-md">
-        <span className="text-[11px] font-black text-gold">DP</span>
+    <div className="flex gap-2 sm:gap-4">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-navy shadow-md sm:h-9 sm:w-9">
+        <span className="text-[10px] font-black text-gold sm:text-[11px]">DP</span>
       </div>
       <div className="max-w-xl flex-1 rounded-2xl rounded-tl-sm border border-gray-200 bg-white px-5 py-4 shadow-sm">
         <div className="mb-4 flex items-center gap-2">
@@ -78,18 +78,18 @@ function MessageBubble({
   const citations = msg.response?.citations ?? []
 
   return (
-    <div className={cn('flex gap-4', msg.role === 'user' && 'flex-row-reverse')}>
+    <div className={cn('flex gap-2 sm:gap-4', msg.role === 'user' && 'flex-row-reverse')}>
       <div className={cn(
-        'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-md',
+        'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold shadow-md sm:h-9 sm:w-9 sm:text-xs',
         msg.role === 'user' ? 'bg-brand text-white shadow-brand/30' : 'bg-navy text-gold shadow-navy/20',
       )}>
         {msg.role === 'user' ? initials : 'DP'}
       </div>
 
-      <div className="max-w-xl space-y-3">
+      <div className="min-w-0 max-w-xl flex-1 space-y-3">
         {/* Bubble */}
         <div className={cn(
-          'rounded-2xl px-5 py-4',
+          'rounded-2xl px-3 py-3 sm:px-5 sm:py-4',
           msg.role === 'user'
             ? 'rounded-tr-sm bg-brand text-white text-sm leading-relaxed'
             : 'rounded-tl-sm border border-gray-200 bg-white shadow-sm',
