@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Bell, ChevronDown, LogOut, Settings, Menu, PanelLeftClose, PanelLeft } from 'lucide-react'
+import { ChevronDown, LogOut, Settings, Menu, PanelLeftClose, PanelLeft } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, usePathname } from 'next/navigation'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
@@ -71,13 +71,8 @@ export default function AppTopNav({ user, onMenuOpen, sidebarCollapsed, onToggle
         <h1 className="text-base font-bold text-gray-900">{pageTitle}</h1>
       </div>
 
-      {/* Right: bell + user */}
+      {/* Right: user menu */}
       <div className="flex items-center gap-1.5">
-        <button aria-label="Notifications"
-          className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition">
-          <Bell className="h-4.5 w-4.5" />
-        </button>
-
         <div className="relative">
           <button onClick={() => setMenuOpen(!menuOpen)}
             className="flex items-center gap-2 rounded-xl px-2 py-1.5 hover:bg-gray-100 transition">

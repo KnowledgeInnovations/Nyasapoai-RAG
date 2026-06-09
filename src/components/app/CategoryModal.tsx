@@ -51,19 +51,21 @@ export default function CategoryModal({ category, onSave, onDelete, onClose }: P
   }
 
   async function handleDelete() {
-    if (!category?.dbId) return
+    if (!category) return
     setDeleting(true)
     try {
-      const res = await fetch(`/api/categories/${category.dbId}`, { method: 'DELETE' })
-      if (!res.ok) { setDeleting(false); return }
+      if (category.dbId) {
+        const res = await fetch(`/api/categories/${category.dbId}`, { method: 'DELETE' })
+        if (!res.ok) { setDeleting(false); return }
+      }
       onDelete(category.value)
     } catch {
       setDeleting(false)
     }
   }
 
-  const isDefaultOverride = isEdit && !!category?.dbId && CATEGORIES.some(c => c.value === category?.value)
-  const showDelete        = isEdit && !!category?.dbId
+  const isDefaultOverride = isEdit && CATEGORIES.some(c => c.value === category?.value)
+  const showDelete        = isEdit
 
   const previewCat = buildCategory(slug || 'preview', label || 'Category name', description, iconName, colorName)
   const PreviewIcon = previewCat.icon

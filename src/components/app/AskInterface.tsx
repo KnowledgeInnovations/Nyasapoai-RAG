@@ -156,16 +156,16 @@ function WelcomeScreen({ greeting, firstName, onSuggest }: {
         <p className="mt-2 text-base text-gray-500">
           I&apos;m here to help you find answers across all your Devtraco documents. What would you like to know today?
         </p>
-        <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="mt-8 grid grid-cols-2 gap-3">
           {SUGGESTIONS.map(s => (
             <button key={s.text} onClick={() => onSuggest(s.text)}
-              className="group flex items-start gap-3 rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:border-brand/30 hover:shadow-md">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-light transition group-hover:bg-brand">
-                <MessageSquare className="h-4 w-4 text-brand transition group-hover:text-white" />
+              className="group flex flex-col gap-2 rounded-2xl border border-gray-200 bg-white p-3 text-left shadow-sm transition hover:border-brand/30 hover:shadow-md sm:flex-row sm:items-start sm:gap-3 sm:p-4">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-light transition group-hover:bg-brand sm:h-8 sm:w-8">
+                <MessageSquare className="h-3.5 w-3.5 text-brand transition group-hover:text-white sm:h-4 sm:w-4" />
               </div>
               <div className="min-w-0">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-brand/70">{s.category}</span>
-                <p className="mt-0.5 text-sm leading-snug text-gray-700">{s.text}</p>
+                <p className="mt-0.5 text-xs leading-snug text-gray-700 sm:text-sm">{s.text}</p>
               </div>
             </button>
           ))}
@@ -393,7 +393,7 @@ export default function AskInterface({ userName = 'there' }: { userName?: string
     <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto bg-gray-50">
+      <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50">
         {messages.length === 0 ? (
           <WelcomeScreen greeting={greeting} firstName={firstName} onSuggest={submit} />
         ) : (
@@ -412,7 +412,7 @@ export default function AskInterface({ userName = 'there' }: { userName?: string
       <SourceViewer citation={activeSource} onClose={() => setActiveSource(null)} />
 
       {/* Input bar */}
-      <div className="shrink-0 border-t border-gray-200 bg-white p-4">
+      <div className="shrink-0 border-t border-gray-200 bg-white px-4 pt-4" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))' }}>
         <form onSubmit={e => { e.preventDefault(); submit(input) }} className="mx-auto max-w-3xl">
           <div className="flex items-end gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3 shadow-sm transition focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/10">
             <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />

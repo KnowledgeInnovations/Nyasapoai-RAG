@@ -48,7 +48,7 @@ export default async function MarketingDashboard() {
 
   return (
     <DashboardShell title="Marketing Dashboard" description="Campaign performance, lead generation, and marketing ROI from your documents." lastUpdated={now}>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Megaphone}     label="Documents Indexed"    value={String(docCount ?? 0)}   sub="Workspace knowledge"           live color="text-purple-600 bg-purple-50" />
         <StatCard icon={MessageSquare} label="AI Queries (30 days)" value={String(convsMonth ?? 0)} sub={`${convsTotal ?? 0} all-time`} live color="text-brand bg-brand-light" />
         <StatCard icon={TrendingUp}    label="Lead Generation"      value="AI"                      sub="Analysed from documents"       live color="text-amber-600 bg-amber-50" />

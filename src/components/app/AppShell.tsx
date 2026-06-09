@@ -37,7 +37,7 @@ export default function AppShell({ user, role, children }: Props) {
   }, [])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex overflow-hidden bg-gray-50" style={{ height: '100dvh' }}>
       {/* Mobile overlay backdrop */}
       {mobileOpen && (
         <div

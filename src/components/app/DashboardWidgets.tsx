@@ -13,23 +13,23 @@ export function StatCard({ icon: Icon, label, value, sub, live, color }: {
   color: string
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-gray-200 bg-white p-3.5 shadow-sm sm:p-5">
       <div className="flex items-start justify-between">
-        <div className={cn('inline-flex rounded-xl p-2', color)}>
-          <Icon className="h-5 w-5" />
+        <div className={cn('inline-flex rounded-xl p-1.5 sm:p-2', color)}>
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
         </div>
         {live
-          ? <span className="flex items-center gap-1 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-700">
+          ? <span className="flex items-center gap-1 rounded-full border border-green-200 bg-green-50 px-1.5 py-0.5 text-[10px] font-semibold text-green-700">
               <span className="h-1.5 w-1.5 rounded-full bg-green-500" />Live
             </span>
-          : <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-semibold text-gray-400">
-              Integration
+          : <span className="rounded-full border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[10px] font-semibold text-gray-400">
+              API
             </span>
         }
       </div>
-      <p className="mt-4 text-3xl font-black text-gray-900">{value}</p>
-      <p className="mt-0.5 text-sm font-medium text-gray-700">{label}</p>
-      {sub && <p className="mt-0.5 text-xs text-gray-400">{sub}</p>}
+      <p className="mt-3 text-2xl font-black text-gray-900 sm:mt-4 sm:text-3xl">{value}</p>
+      <p className="mt-0.5 text-xs font-medium text-gray-700 sm:text-sm">{label}</p>
+      {sub && <p className="mt-0.5 text-[11px] text-gray-400 sm:text-xs">{sub}</p>}
     </div>
   )
 }
