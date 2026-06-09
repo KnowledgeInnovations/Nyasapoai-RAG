@@ -136,7 +136,7 @@ export default function DocumentsClient({ initialDocuments, canUpload, canDelete
       </div>
 
       {/* ── Category overview cards ─────────────────────────── */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+      <div className="grid grid-cols-3 gap-3">
         {categories.map(cat => (
           <div key={cat.value} className="relative group">
             <button
