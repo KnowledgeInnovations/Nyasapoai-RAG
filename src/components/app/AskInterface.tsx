@@ -36,21 +36,11 @@ interface HistoryItem {
   created_at: string
 }
 
-/* ── Helpers ──────────────────────────────────────────────── */
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/)
-  return parts.length >= 2
-    ? (parts[0][0] + parts[1][0]).toUpperCase()
-    : name.slice(0, 2).toUpperCase()
-}
 
 /* ── Shimmer skeleton ────────────────────────────────────── */
 function ThinkingSkeleton() {
   return (
-    <div className="flex gap-2 sm:gap-4">
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-navy shadow-md sm:h-9 sm:w-9">
-        <span className="text-[10px] font-black text-gold sm:text-[11px]">DP</span>
-      </div>
+    <div className="flex gap-3">
       <div className="max-w-xl flex-1 rounded-2xl rounded-tl-sm border border-gray-200 bg-white px-5 py-4 shadow-sm">
         <div className="mb-4 flex items-center gap-2">
           <Sparkles className="h-3.5 w-3.5 animate-pulse text-brand" />
@@ -69,23 +59,15 @@ function ThinkingSkeleton() {
 
 /* ── Message bubble ──────────────────────────────────────── */
 function MessageBubble({
-  msg, initials, onCiteClick,
+  msg, onCiteClick,
 }: {
   msg: Message
-  initials: string
   onCiteClick: (c: Citation) => void
 }) {
   const citations = msg.response?.citations ?? []
 
   return (
-    <div className={cn('flex gap-2 sm:gap-4', msg.role === 'user' && 'flex-row-reverse')}>
-      <div className={cn(
-        'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold shadow-md sm:h-9 sm:w-9 sm:text-xs',
-        msg.role === 'user' ? 'bg-brand text-white shadow-brand/30' : 'bg-navy text-gold shadow-navy/20',
-      )}>
-        {msg.role === 'user' ? initials : 'DP'}
-      </div>
-
+    <div className={cn('flex gap-3', msg.role === 'user' && 'flex-row-reverse')}>
       <div className="min-w-0 max-w-xl flex-1 space-y-3">
         {/* Bubble */}
         <div className={cn(
@@ -195,7 +177,7 @@ export default function AskInterface({ userName = 'there' }: { userName?: string
   const textareaRef  = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const initials  = getInitials(userName)
+
   const firstName = userName.split(/\s+/)[0]
 
   // Computed client-side only to avoid SSR/client hydration mismatch
@@ -301,7 +283,10 @@ export default function AskInterface({ userName = 'there' }: { userName?: string
     const q = query.trim()
     if (!q || loading || uploading) return
     setInput('')
-    if (textareaRef.current) textareaRef.current.style.height = 'auto'
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.blur()
+    }
     setMessages(prev => [...prev, { role: 'user', text: q }])
     setLoading(true)
     try {
@@ -399,7 +384,7 @@ export default function AskInterface({ userName = 'there' }: { userName?: string
         ) : (
           <div className="mx-auto max-w-3xl space-y-8 px-6 py-8">
             {messages.map((msg, i) => (
-              <MessageBubble key={i} msg={msg} initials={initials} onCiteClick={setActiveSource} />
+              <MessageBubble key={i} msg={msg} onCiteClick={setActiveSource} />
             ))}
             {/* Show skeleton only before first token arrives (last msg is still from user) */}
             {loading && messages[messages.length - 1]?.role === 'user' && <ThinkingSkeleton />}
@@ -429,7 +414,7 @@ export default function AskInterface({ userName = 'there' }: { userName?: string
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(input) } }}
               placeholder="Ask me anything about your Devtraco documents…"
               className="flex-1 resize-none bg-transparent text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
-              style={{ minHeight: '24px', maxHeight: '120px' }}
+              style={{ minHeight: '24px', maxHeight: '120px', fontSize: '16px' }}
             />
             <button type="submit" disabled={!input.trim() || loading || uploading}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand text-white shadow-sm transition hover:bg-brand-dark disabled:opacity-30">
